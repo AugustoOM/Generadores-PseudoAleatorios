@@ -21,6 +21,28 @@ python cli.py --method fibonacci --seed 12345 --seed2 67890 --n 10
 python cli.py --method multiplicative --seed 12345 --n 10
 ```
 
+## Ejemplo (ejercicio) — Fibonacci módulo m
+
+Regla:
+
+\[
+x_n = (x_{n-1} + x_{n-2}) \bmod m
+\]
+
+Ejemplo con \(x_0=1\), \(x_1=1\), \(m=10\):
+
+- \(x_2 = (1+1)\bmod 10 = 2\)
+- \(x_3 = (2+1)\bmod 10 = 3\)
+- \(x_4 = (3+2)\bmod 10 = 5\)
+- \(x_5 = (5+3)\bmod 10 = 8\)
+- \(x_6 = (8+5)\bmod 10 = 3\)
+
+En este proyecto podés reproducir esa recurrencia usando Fibonacci con retardo con `j=1` y `k=2`:
+
+```bash
+python cli.py --method fibonacci --seed 1 --seed2 1 --m 10 --j 1 --k 2 --n 10
+```
+
 Para ver todas las opciones:
 
 ```bash

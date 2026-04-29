@@ -43,9 +43,9 @@ def lagged_fibonacci(
     seed1: int,
     seed2: int | None = None,
     *,
-    j: int = 1,
-    k: int = 2,
-    m: int = 10,
+    j: int = 24,
+    k: int = 55,
+    m: int = 2**31 - 1,
 ) -> Iterator[float]:
     """
     Fibonacci con retardo (Lagged Fibonacci) usando suma módulo m.
