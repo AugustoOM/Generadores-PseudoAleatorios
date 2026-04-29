@@ -1,0 +1,131 @@
+from __future__ import annotations
+
+from collections.abc import Iterator
+
+
+def middle_square(seed: int, *, digits: int = 8) -> Iterator[float]:
+    """
+    Cuadrados medios (Middle-square).
+
+    - seed: entero no negativo.
+    - digits: cantidad TOTAL de dígitos (par) asociada al método; se interpreta como 2*d,
+      donde d es la cantidad de dígitos del estado R(n). Por ejemplo: digits=6 -> d=3.
+
+    Esta variante sigue el procedimiento típico de ejercicios: se eleva al cuadrado y se toma
+    el valor "central" quitando el primer y el último dígito del cuadrado (sin zfill).
+    Luego el próximo R(n) se forma con los primeros d dígitos de ese centro (con padding a la izquierda si hace falta).
+
+    Produce floats en [0, 1).
+    """
+    if seed < 0:
+        raise ValueError("seed must be >= 0")
+    if digits <= 0:
+        raise ValueError("digits must be > 0")
+
+    if digits % 2 != 0:
+        raise ValueError("digits must be even (e.g. 6 -> d=3)")
+
+    d = digits // 2
+    mod = 10**d
+    x = seed % mod
+
+    while True:
+        s = str(x * x)
+        center = s[1:-1] if len(s) > 2 else ""
+        if not center:
+            center = "0"
+        center = center.zfill(d)
+        x = int(center[:d])
+        yield x / mod
+
+
+def lagged_fibonacci(
+    seed1: int,
+    seed2: int | None = None,
+    *,
+    j: int = 1,
+    k: int = 2,
+    m: int = 10,
+) -> Iterator[float]:
+    """
+    Fibonacci con retardo (Lagged Fibonacci) usando suma módulo m.
+
+    x_n = (x_{n-j} + x_{n-k}) mod m, con k > j.
+
+    - seed1, seed2: semillas para inicialización. Si se proveen ambas, se inicializa el
+      buffer con una recurrencia Fibonacci módulo m hasta tamaño k. Si seed2 es None,
+      se usa una inicialización interna (LCG) para mantener compatibilidad.
+    - j, k: retardos (por defecto 24, 55).
+    - m: módulo (por defecto 2^31-1).
+
+    Produce floats en [0, 1).
+    """
+    if k <= j:
+        raise ValueError("k must be > j")
+    if k <= 0 or j <= 0:
+        raise ValueError("j and k must be > 0")
+    if m <= 1:
+        raise ValueError("m must be > 1")
+
+    buf: list[int] = []
+    if seed2 is None:
+        # Inicialización con un LCG simple (solo para sembrar el estado).
+        # Mantiene el proyecto autocontenido.
+        a = 1103515245
+        c = 12345
+        state = seed1 & 0x7FFFFFFF
+        for _ in range(k):
+            state = (a * state + c) % m
+            buf.append(state)
+    else:
+        x0 = seed1 % m
+        x1 = seed2 % m
+        if x0 < 0:
+            x0 += m
+        if x1 < 0:
+            x1 += m
+        buf.append(x0)
+        if k > 1:
+            buf.append(x1)
+        for i in range(2, k):
+            buf.append((buf[i - 1] + buf[i - 2]) % m)
+
+    idx = 0
+    while True:
+        i_k = idx % k
+        i_j = (idx - j) % k
+        new = (buf[i_j] + buf[i_k]) % m
+        buf[i_k] = new
+        idx += 1
+        yield new / m
+
+
+def multiplicative_lcg(
+    seed: int,
+    *,
+    a: int = 48271,
+    m: int = 2**31 - 1,
+) -> Iterator[float]:
+    """
+    Generador congruencial lineal multiplicativo:
+
+    x_{n+1} = (a * x_n) mod m
+
+    Por defecto usa parámetros clásicos del "minimal standard" (Park-Miller):
+    a=48271, m=2^31-1.
+
+    Produce floats en (0, 1).
+    """
+    if m <= 1:
+        raise ValueError("m must be > 1")
+    if a <= 0 or a >= m:
+        raise ValueError("a must satisfy 0 < a < m")
+
+    x = seed % m
+    if x == 0:
+        x = 1
+
+    while True:
+        x = (a * x) % m
+        yield x / m
+

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Generadores Pseudoaleatorios</title>
+    <script type="module" crossorigin src="/assets/index-CBdGmUpm.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CeKvNpuy.css">
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <div>
+          <h1>Generadores Pseudoaleatorios</h1>
+          <p class="subtitle">Cuadrados medios · Fibonacci (retardado) · Multiplicativo</p>
+        </div>
+        <div class="badge">Educativo</div>
+      </header>
+
+      <main class="grid">
+        <section class="card">
+          <h2>Método y parámetros</h2>
+
+          <div class="row">
+            <label for="method">Método</label>
+            <select id="method">
+              <option value="middle-square">Cuadrados medios</option>
+              <option value="fibonacci">Fibonacci (retardado)</option>
+              <option value="multiplicative">Multiplicativo (LCG)</option>
+            </select>
+          </div>
+
+          <div class="row">
+            <label for="seed">Semilla (seed)</label>
+            <input id="seed" type="number" inputmode="numeric" value="12345" />
+          </div>
+
+          <div class="method method-fibonacci">
+            <div class="row">
+              <label for="seed2">Semilla 2 (seed2)</label>
+              <input id="seed2" type="number" inputmode="numeric" value="67890" />
+            </div>
+          </div>
+
+          <div class="row">
+            <label for="count">Cantidad (n)</label>
+            <input id="count" type="number" inputmode="numeric" min="1" value="10" />
+          </div>
+
+          <div class="method method-middle-square">
+            <div class="row">
+              <label for="digits">Dígitos</label>
+              <input id="digits" type="number" inputmode="numeric" min="2" step="2" value="6" />
+            </div>
+            <p class="hint">
+              En cuadrados medios, si cae en ciclos cortos o llega a 0, probá otra semilla o más dígitos.
+            </p>
+          </div>
+
+          <div class="method method-fibonacci">
+            <div class="row two">
+              <div>
+                <label for="j">j</label>
+                <input id="j" type="number" inputmode="numeric" min="1" value="24" />
+              </div>
+              <div>
+                <label for="k">k</label>
+                <input id="k" type="number" inputmode="numeric" min="2" value="55" />
+              </div>
+            </div>
+            <div class="row">
+              <label for="mFib">m (módulo)</label>
+              <input id="mFib" type="number" inputmode="numeric" min="2" value="2147483647" />
+            </div>
+          </div>
+
+          <div class="method method-multiplicative">
+            <div class="row">
+              <label for="a">a (multiplicador)</label>
+              <input id="a" type="number" inputmode="numeric" min="1" value="48271" />
+            </div>
+            <div class="row">
+              <label for="mLcg">m (módulo)</label>
+              <input id="mLcg" type="number" inputmode="numeric" min="2" value="2147483647" />
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="generate" class="primary">Generar</button>
+            <button id="copy" class="ghost" disabled>Copiar salida</button>
+          </div>
+
+          <div id="error" class="error" hidden></div>
+        </section>
+
+        <section class="card">
+          <div class="cardHeader">
+            <h2>Salida</h2>
+            <div class="meta">
+              <span id="summary" class="summary">—</span>
+            </div>
+          </div>
+
+          <div class="output">
+            <table class="table" aria-label="Salida del generador">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>u \u2208 [0,1)</th>
+                  <th>valor entero</th>
+                </tr>
+              </thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <span>Hecho con TypeScript, HTML y CSS.</span>
+        <span class="sep">·</span>
+        <span>No usar para criptografía.</span>
+      </footer>
+    </div>
+
+  </body>
+</html>
+
