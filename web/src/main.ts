@@ -117,7 +117,15 @@ function setError(message: string | null) {
 
 function summarize(method: Method, n: number, extra?: string) {
   const summary = el<HTMLSpanElement>("summary");
-  summary.textContent = extra ? `${method} · n=${n} · ${extra}` : `${method} · n=${n}`;
+  const methodNames: Record<Method, string> = {
+    "middle-square": "Cuadrados Medios",
+    fibonacci: "Fibonacci Retardado",
+    multiplicative: "LCG Multiplicativo",
+    mixed: "LCG Mixto",
+  };
+  summary.textContent = extra
+    ? `${methodNames[method]} | Generados: ${n} | ${extra}`
+    : `${methodNames[method]} | Generados: ${n}`;
 }
 
 function getCurrentMethod(): Method {
@@ -129,18 +137,32 @@ function generate() {
   const method = getCurrentMethod();
   updateMethodVisibility(method);
 
-  const n = method === "mixed" ? 10 : toIntStrict(el<HTMLInputElement>("count").value, "n");
-  if (n <= 0) throw new Error("n must be > 0");
-
   const gen = buildGenerator(method);
   const out: PRNGOutput[] = [];
-  for (let i = 0; i < n; i += 1) out.push(gen.next().value);
+
+  if (method === "mixed") {
+    const seen = new Set<bigint>();
+    const m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
+    // Generate until we see a duplicate or reach a safe limit (m)
+    for (let i = 0; i < Number(m) + 1; i++) {
+      const val = gen.next().value;
+      if (seen.has(val.x)) break;
+      seen.add(val.x);
+      out.push(val);
+      if (out.length > 5000) break; // Safety cap
+    }
+  } else {
+    const n = toIntStrict(el<HTMLInputElement>("count").value, "n");
+    if (n <= 0) throw new Error("n must be > 0");
+    for (let i = 0; i < n; i += 1) out.push(gen.next().value);
+  }
 
   if (method === "mixed") {
     const a = toBigIntStrict(el<HTMLInputElement>("aMixed").value, "a");
     const c = toBigIntStrict(el<HTMLInputElement>("cMixed").value, "c");
     const m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
     const res = checkHullDobellDetailed(a, c, m);
+    const n = out.length;
 
     const box = el<HTMLDivElement>("hull-dobell");
     box.hidden = false;
@@ -155,14 +177,13 @@ function generate() {
 
     const full = res.cond1 && res.cond2 && res.cond3;
     const status = el("hd-status");
-    status.textContent = full ? "✓ Cumple Hull-Dobell (Periodo Completo)" : "✕ No cumple (Periodo Incompleto)";
-    status.style.color = full ? "var(--accent2)" : "var(--danger)";
+    status.textContent = full ? "Cumple Hull-Dobell (Periodo Completo)" : "No cumple (Periodo Incompleto)";
+    status.className = full ? "status-ok" : "status-fail";
 
-    const extra = full ? `period=${m.toString()} (completo)` : "period< m (no completo)";
-    summarize(method, n, extra);
+    summarize(method, n, full ? `Periodo completo (${m})` : `Periodo incompleto (${n})`);
   } else {
     el("hull-dobell").hidden = true;
-    summarize(method, n);
+    summarize(method, out.length);
   }
   render(out);
 
