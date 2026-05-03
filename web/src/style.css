@@ -31,6 +31,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   height: 100%;
@@ -202,6 +206,78 @@ button.ghost {
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 12px;
+}
+
+.formula {
+  background: rgba(141, 209, 255, 0.05);
+  border: 1px dashed var(--border);
+  padding: 12px;
+  border-radius: 10px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 14px;
+  margin-bottom: 16px;
+  color: var(--accent);
+}
+
+.hull-dobell {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.hull-dobell h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.hull-dobell ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.hull-dobell li {
+  margin-bottom: 4px;
+  padding-left: 20px;
+  position: relative;
+}
+
+.hull-dobell li::before {
+  content: "○";
+  position: absolute;
+  left: 0;
+  color: var(--muted);
+}
+
+.hull-dobell li.ok {
+  color: var(--accent2);
+}
+
+.hull-dobell li.ok::before {
+  content: "✓";
+  color: var(--accent2);
+}
+
+.hull-dobell li.fail {
+  color: var(--danger);
+}
+
+.hull-dobell li.fail::before {
+  content: "✕";
+  color: var(--danger);
+}
+
+#hd-status {
+  margin: 8px 0 0;
+  font-weight: 600;
+  font-size: 13px;
 }
 
 .table {

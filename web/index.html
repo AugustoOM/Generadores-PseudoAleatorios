@@ -85,17 +85,34 @@
           </div>
 
           <div class="method method-mixed">
+            <div class="formula">
+              $X_{i+1} = (a X_i + c) \pmod m$
+            </div>
+            <div class="row">
+              <label for="x0Mixed">X<sub>0</sub> (semilla)</label>
+              <input id="x0Mixed" type="number" inputmode="numeric" value="12345" />
+            </div>
             <div class="row">
               <label for="aMixed">a (multiplicador)</label>
-              <input id="aMixed" type="number" inputmode="numeric" min="1" value="1664525" />
+              <input id="aMixed" type="number" inputmode="numeric" min="1" value="8" />
             </div>
             <div class="row">
               <label for="cMixed">c (incremento)</label>
-              <input id="cMixed" type="number" inputmode="numeric" value="1013904223" />
+              <input id="cMixed" type="number" inputmode="numeric" value="16" />
             </div>
             <div class="row">
               <label for="mMixed">m (módulo)</label>
-              <input id="mMixed" type="number" inputmode="numeric" min="2" value="4294967296" />
+              <input id="mMixed" type="number" inputmode="numeric" min="2" value="100" />
+            </div>
+
+            <div id="hull-dobell" class="hull-dobell" hidden>
+              <h3>Teorema Hull-Dobell</h3>
+              <ul>
+                <li id="hd-c1">1. m y c son primos entre sí</li>
+                <li id="hd-c2">2. (a-1) es divisible por factores primos de m</li>
+                <li id="hd-c3">3. Si 4 divide a m, 4 divide a (a-1)</li>
+              </ul>
+              <p id="hd-status"></p>
             </div>
           </div>
 

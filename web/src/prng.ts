@@ -85,6 +85,9 @@ export function* mixedLCG(seed: bigint, a: bigint, c: bigint, m: bigint): Genera
   let x = seed % m;
   if (x < 0n) x += m;
 
+  // Yield X0 first
+  yield { u: Number(x) / Number(m), x };
+
   while (true) {
     x = (a * x + inc) % m;
     yield { u: Number(x) / Number(m), x };
@@ -120,15 +123,32 @@ function uniquePrimeFactors(n: bigint): bigint[] {
 }
 
 export function mixedLCGHasFullPeriod(a: bigint, c: bigint, m: bigint): boolean {
+  const { cond1, cond2, cond3 } = checkHullDobellDetailed(a, c, m);
+  return cond1 && cond2 && cond3;
+}
+
+export type HullDobellResult = {
+  cond1: boolean; // gcd(c, m) = 1
+  cond2: boolean; // (a-1) divisible by all prime factors of m
+  cond3: boolean; // if 4|m then 4|(a-1)
+};
+
+export function checkHullDobellDetailed(a: bigint, c: bigint, m: bigint): HullDobellResult {
   if (m <= 1n) throw new Error("m must be > 1");
-  if (gcdBigInt(c, m) !== 1n) return false;
+
+  const cond1 = gcdBigInt(c, m) === 1n;
 
   const factors = uniquePrimeFactors(m);
+  let cond2 = true;
   for (const p of factors) {
-    if ((a - 1n) % p !== 0n) return false;
+    if ((a - 1n) % p !== 0n) {
+      cond2 = false;
+      break;
+    }
   }
 
-  if (m % 4n === 0n && (a - 1n) % 4n !== 0n) return false;
-  return true;
+  const cond3 = m % 4n !== 0n || (a - 1n) % 4n === 0n;
+
+  return { cond1, cond2, cond3 };
 }
 

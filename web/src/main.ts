@@ -4,7 +4,7 @@ import {
   middleSquare,
   multiplicativeLCG,
   mixedLCG,
-  mixedLCGHasFullPeriod,
+  checkHullDobellDetailed,
   type PRNGOutput,
 } from "./prng";
 
@@ -41,14 +41,14 @@ function formatU(u: number): string {
 }
 
 function buildGenerator(method: Method): Generator<PRNGOutput> {
-  const seed = method === "mixed" ? 0n : toBigIntStrict(el<HTMLInputElement>("seed").value, "seed");
-
   if (method === "middle-square") {
+    const seed = toBigIntStrict(el<HTMLInputElement>("seed").value, "seed");
     const digits = toIntStrict(el<HTMLInputElement>("digits").value, "digits");
     return middleSquare(seed, digits);
   }
 
   if (method === "fibonacci") {
+    const seed = toBigIntStrict(el<HTMLInputElement>("seed").value, "seed");
     const seed2 = toBigIntStrict(el<HTMLInputElement>("seed2").value, "seed2");
     const j = toIntStrict(el<HTMLInputElement>("j").value, "j");
     const k = toIntStrict(el<HTMLInputElement>("k").value, "k");
@@ -57,11 +57,13 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
   }
 
   if (method === "multiplicative") {
+    const seed = toBigIntStrict(el<HTMLInputElement>("seed").value, "seed");
     const a = toBigIntStrict(el<HTMLInputElement>("a").value, "a");
     const m = toBigIntStrict(el<HTMLInputElement>("mLcg").value, "m");
     return multiplicativeLCG(seed, a, m);
   }
 
+  const seed = toBigIntStrict(el<HTMLInputElement>("x0Mixed").value, "X0");
   const a = toBigIntStrict(el<HTMLInputElement>("aMixed").value, "a");
   const c = toBigIntStrict(el<HTMLInputElement>("cMixed").value, "c");
   const m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
@@ -87,7 +89,7 @@ function render(rows: PRNGOutput[]) {
 
     const tdIdx = document.createElement("td");
     tdIdx.className = "num";
-    tdIdx.textContent = String(i + 1);
+    tdIdx.textContent = String(i); // Change to 0-indexed to match Xi notation better if desired
 
     const tdU = document.createElement("td");
     tdU.className = "num";
@@ -138,10 +140,28 @@ function generate() {
     const a = toBigIntStrict(el<HTMLInputElement>("aMixed").value, "a");
     const c = toBigIntStrict(el<HTMLInputElement>("cMixed").value, "c");
     const m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
-    const full = mixedLCGHasFullPeriod(a, c, m);
+    const res = checkHullDobellDetailed(a, c, m);
+
+    const box = el<HTMLDivElement>("hull-dobell");
+    box.hidden = false;
+
+    const updateCond = (id: string, ok: boolean) => {
+      const li = el(id);
+      li.className = ok ? "ok" : "fail";
+    };
+    updateCond("hd-c1", res.cond1);
+    updateCond("hd-c2", res.cond2);
+    updateCond("hd-c3", res.cond3);
+
+    const full = res.cond1 && res.cond2 && res.cond3;
+    const status = el("hd-status");
+    status.textContent = full ? "✓ Cumple Hull-Dobell (Periodo Completo)" : "✕ No cumple (Periodo Incompleto)";
+    status.style.color = full ? "var(--accent2)" : "var(--danger)";
+
     const extra = full ? `period=${m.toString()} (completo)` : "period< m (no completo)";
     summarize(method, n, extra);
   } else {
+    el("hull-dobell").hidden = true;
     summarize(method, n);
   }
   render(out);
