@@ -9,23 +9,27 @@ function pow10Big(n: number): bigint {
   return r;
 }
 
-export function* middleSquare(seed: bigint, digits: number): Generator<PRNGOutput> {
-  if (seed < 0n) throw new Error("seed must be >= 0");
-  if (!Number.isInteger(digits) || digits <= 0) throw new Error("digits must be a positive integer");
-  if (digits % 2 !== 0) throw new Error("digits must be even (e.g. 6 -> R(n) has 3 digits)");
+export function* middleSquare(seed: bigint, d: number): Generator<PRNGOutput> {
+  if (d <= 0) throw new Error("Dígitos a extraer debe ser > 0");
 
-  const d = Math.floor(digits / 2);
+  let x = seed;
   const mod = pow10Big(d);
-  let x = seed % mod;
 
   while (true) {
-    const s = (x * x).toString();
-    let center = s.length > 2 ? s.slice(1, -1) : "";
-    if (center.length === 0) center = "0";
-    if (center.length < d) center = center.padStart(d, "0");
-    x = BigInt(center.slice(0, d));
+    let s = (x * x).toString();
 
-    const u = Number(x) / Number(mod); // d <= 9 recommended to keep Number safe
+    // Pad to ensure we have at least 'd' digits
+    if (s.length < d) {
+      s = s.padStart(d, "0");
+    }
+
+    // Determine the start index for the 'd' central digits
+    // Example: s="123456", d=2 -> start = (6-2)/2 = 2. s.slice(2, 4) = "34"
+    const start = Math.floor((s.length - d) / 2);
+    const center = s.slice(start, start + d);
+
+    x = BigInt(center);
+    const u = Number(x) / Number(mod);
     yield { u, x };
   }
 }
