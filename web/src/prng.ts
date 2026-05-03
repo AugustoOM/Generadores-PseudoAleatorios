@@ -1,6 +1,7 @@
 export type PRNGOutput = {
   u: number; // normalized in [0,1)
   x: bigint; // raw integer state/output
+  aux?: string; // auxiliary info (e.g. squared value)
 };
 
 function pow10Big(n: number): bigint {
@@ -12,25 +13,45 @@ function pow10Big(n: number): bigint {
 export function* middleSquare(seed: bigint, d: number): Generator<PRNGOutput> {
   if (d <= 0) throw new Error("Dígitos a extraer debe ser > 0");
 
-  let x = seed;
+  let sSeed = seed.toString();
+  // Si la semilla es más larga que D, tomamos su centro para empezar
+  if (sSeed.length > d) {
+    if ((sSeed.length - d) % 2 !== 0) sSeed = "0" + sSeed;
+    const start = (sSeed.length - d) / 2;
+    sSeed = sSeed.slice(start, start + d);
+  } else if (sSeed.length < d) {
+    sSeed = sSeed.padStart(d, "0");
+  }
+
+  let x = BigInt(sSeed);
   const mod = pow10Big(d);
 
-  while (true) {
-    let s = (x * x).toString();
+  // Yield X0 (la semilla ya recortada al centro si era necesario)
+  yield { u: Number(x) / Number(mod), x, aux: "Semilla (Centro)" };
 
-    // Pad to ensure we have at least 'd' digits
-    if (s.length < d) {
-      s = s.padStart(d, "0");
+  while (true) {
+    const square = x * x;
+    let s = square.toString();
+
+    // Pad to at least 2*D for consistent centering
+    const minLen = 2 * d;
+    if (s.length < minLen) {
+      s = s.padStart(minLen, "0");
+    }
+    
+    // Paridad para centro exacto
+    if ((s.length - d) % 2 !== 0) {
+      s = "0" + s;
     }
 
-    // Determine the start index for the 'd' central digits
-    // Example: s="123456", d=2 -> start = (6-2)/2 = 2. s.slice(2, 4) = "34"
-    const start = Math.floor((s.length - d) / 2);
+    const start = (s.length - d) / 2;
     const center = s.slice(start, start + d);
+    const left = s.slice(0, start);
+    const right = s.slice(start + d);
 
     x = BigInt(center);
     const u = Number(x) / Number(mod);
-    yield { u, x };
+    yield { u, x, aux: `${left} | [${center}] | ${right} (${square})` };
   }
 }
 
@@ -74,8 +95,9 @@ export function* multiplicativeLCG(seed: bigint, a: bigint, m: bigint): Generato
   if (x === 0n) x = 1n;
 
   while (true) {
-    x = (a * x) % m;
-    yield { u: Number(x) / Number(m), x };
+    const nextX = (a * x) % m;
+    yield { u: Number(nextX) / Number(m), x: nextX, aux: `${a} * ${x}` };
+    x = nextX;
   }
 }
 
@@ -90,11 +112,12 @@ export function* mixedLCG(seed: bigint, a: bigint, c: bigint, m: bigint): Genera
   if (x < 0n) x += m;
 
   // Yield X0 first
-  yield { u: Number(x) / Number(m), x };
+  yield { u: Number(x) / Number(m), x, aux: "Semilla" };
 
   while (true) {
-    x = (a * x + inc) % m;
-    yield { u: Number(x) / Number(m), x };
+    const nextX = (a * x + inc) % m;
+    yield { u: Number(nextX) / Number(m), x: nextX, aux: `(${a} * ${x} + ${inc})` };
+    x = nextX;
   }
 }
 

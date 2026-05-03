@@ -109,11 +109,15 @@ function render(rows: PRNGOutput[]) {
     tdU.className = "num";
     tdU.textContent = formatU(r.u);
 
+    const tdAux = document.createElement("td");
+    tdAux.className = "num";
+    tdAux.textContent = r.aux ?? "-";
+
     const tdX = document.createElement("td");
     tdX.className = "num";
     tdX.textContent = r.x.toString();
 
-    tr.append(tdIdx, tdU, tdX);
+    tr.append(tdIdx, tdU, tdAux, tdX);
     tbody.append(tr);
   }
 }
