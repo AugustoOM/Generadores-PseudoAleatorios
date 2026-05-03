@@ -76,7 +76,7 @@ function updateMethodVisibility(method: Method) {
   if (method === "fibonacci") setHidden(".method-fibonacci", false);
   if (method === "multiplicative") setHidden(".method-multiplicative", false);
   if (method === "mixed") setHidden(".method-mixed", false);
-  setHidden(".method-non-mixed", method === "mixed");
+  if (method === "mixed") setHidden(".method-mixed", false);
 }
 
 function render(rows: PRNGOutput[]) {
@@ -141,15 +141,26 @@ function generate() {
   const out: PRNGOutput[] = [];
 
   if (method === "mixed") {
-    const seen = new Set<bigint>();
     const m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
-    // Generate until we see a duplicate or reach a safe limit (m)
-    for (let i = 0; i < Number(m) + 1; i++) {
-      const val = gen.next().value;
-      if (seen.has(val.x)) break;
-      seen.add(val.x);
-      out.push(val);
-      if (out.length > 5000) break; // Safety cap
+    const countValue = el<HTMLInputElement>("count").value.trim();
+    
+    if (countValue === "" || countValue === "0") {
+      // Auto mode: Stop at first repeat
+      const seen = new Set<bigint>();
+      for (let i = 0; i < Number(m) + 2; i++) {
+        const val = gen.next().value;
+        if (seen.has(val.x)) {
+          out.push(val); // Show the duplicate at the end
+          break;
+        }
+        seen.add(val.x);
+        out.push(val);
+        if (out.length > 2000) break;
+      }
+    } else {
+      // Manual mode
+      const n = toIntStrict(countValue, "n");
+      for (let i = 0; i < n; i++) out.push(gen.next().value);
     }
   } else {
     const n = toIntStrict(el<HTMLInputElement>("count").value, "n");
@@ -162,7 +173,6 @@ function generate() {
     const c = toBigIntStrict(el<HTMLInputElement>("cMixed").value, "c");
     const m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
     const res = checkHullDobellDetailed(a, c, m);
-    const n = out.length;
 
     const box = el<HTMLDivElement>("hull-dobell");
     box.hidden = false;
@@ -180,7 +190,15 @@ function generate() {
     status.textContent = full ? "Cumple Hull-Dobell (Periodo Completo)" : "No cumple (Periodo Incompleto)";
     status.className = full ? "status-ok" : "status-fail";
 
-    summarize(method, n, full ? `Periodo completo (${m})` : `Periodo incompleto (${n})`);
+    let extra = full ? `Periodo esperado: ${m}` : "Periodo esperado: < m";
+    if (out.length > 0) {
+      const last = out[out.length - 1];
+      const repeatedIdx = out.findIndex((r, idx) => idx < out.length - 1 && r.x === last.x);
+      if (repeatedIdx !== -1) {
+        extra += ` | Repite X${repeatedIdx}`;
+      }
+    }
+    summarize(method, out.length, extra);
   } else {
     el("hull-dobell").hidden = true;
     summarize(method, out.length);

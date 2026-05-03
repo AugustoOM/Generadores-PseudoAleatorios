@@ -247,38 +247,19 @@ button.ghost {
 
 .hull-dobell li {
   margin-bottom: 6px;
-  padding-left: 24px;
-  position: relative;
+  padding-left: 0;
   transition: color 0.2s;
-}
-
-.hull-dobell li::before {
-  content: "•";
-  position: absolute;
-  left: 4px;
-  color: var(--muted);
-  opacity: 0.4;
 }
 
 .hull-dobell li.ok {
   color: var(--accent2);
 }
 
-.hull-dobell li.ok::before {
-  content: "✓";
-  color: var(--accent2);
-  opacity: 1;
-}
 
 .hull-dobell li.fail {
   color: var(--danger);
 }
 
-.hull-dobell li.fail::before {
-  content: "✕";
-  color: var(--danger);
-  opacity: 1;
-}
 
 #hd-status {
   margin: 12px 0 0;
