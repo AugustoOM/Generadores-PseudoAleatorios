@@ -154,31 +154,22 @@ function generate() {
   const gen = buildGenerator(method);
   const out: PRNGOutput[] = [];
 
-  if (method === "mixed" || method === "multiplicative") {
-    const m =
-      method === "mixed"
-        ? toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m")
-        : toBigIntStrict(el<HTMLInputElement>("mLcgInput").value, "m");
-    const countValue = el<HTMLInputElement>("count").value.trim();
-
-    if (countValue === "" || countValue === "0") {
-      // Auto mode: Stop at first repeat
-      const seen = new Set<bigint>();
-      for (let i = 0; i < Number(m) + 2; i++) {
-        const val = gen.next().value;
-        if (seen.has(val.x)) {
-          out.push(val);
-          break;
-        }
-        seen.add(val.x);
+  if (method === "mixed") {
+    const m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
+    // Auto mode: Stop at first repeat for Mixed
+    const seen = new Set<bigint>();
+    for (let i = 0; i < Number(m) + 2; i++) {
+      const val = gen.next().value;
+      if (seen.has(val.x)) {
         out.push(val);
-        if (out.length > 2000) break;
+        break;
       }
-    } else {
-      const n = toIntStrict(countValue, "n");
-      for (let i = 0; i < n; i++) out.push(gen.next().value);
+      seen.add(val.x);
+      out.push(val);
+      if (out.length > 2000) break;
     }
   } else {
+    // Other methods use the 'count' field
     const n = toIntStrict(el<HTMLInputElement>("count").value, "n");
     if (n <= 0) throw new Error("n must be > 0");
     for (let i = 0; i < n; i += 1) out.push(gen.next().value);
