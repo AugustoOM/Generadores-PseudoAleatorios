@@ -179,6 +179,29 @@ function setError(message: string | null) {
   box.textContent = message;
 }
 
+function setWarning(message: string | null) {
+  const box = el<HTMLDivElement>("warning");
+  if (!message) {
+    box.hidden = true;
+    box.textContent = "";
+    return;
+  }
+  box.hidden = false;
+  box.textContent = message;
+}
+
+function getMiddleSquareZeroSeedWarning(): string | null {
+  if (getCurrentMethod() !== "middle-square") return null;
+  const rawSeed = el<HTMLInputElement>("seed").value.trim();
+  if (/^0+$/.test(rawSeed)) {
+    return "Advertencia: usar semilla con solo 0 o 000.. en cuadrados medios degenera rapidamente la secuencia.";
+  }
+  if (/^0+\d+$/.test(rawSeed)) {
+    return "Advertencia: al ingresar una cadena con la forma 00...xx, se eliminan los 0 a la izquierda para mejorar la precision.";
+  }
+  return null;
+}
+
 function summarize(method: Method, n: number, extra?: string) {
   const summary = el<HTMLSpanElement>("summary");
   summary.textContent = extra
@@ -192,6 +215,7 @@ function getCurrentMethod(): Method {
 
 function generate() {
   setError(null);
+  setWarning(getMiddleSquareZeroSeedWarning());
   const method = getCurrentMethod();
   updateMethodVisibility(method);
 
@@ -275,6 +299,10 @@ function wire() {
   method.addEventListener("change", () => {
     updateMethodVisibility(getCurrentMethod());
     setError(null);
+    setWarning(getMiddleSquareZeroSeedWarning());
+  });
+  el<HTMLInputElement>("seed").addEventListener("input", () => {
+    setWarning(getMiddleSquareZeroSeedWarning());
   });
   updateMethodVisibility(getCurrentMethod());
 
@@ -283,6 +311,7 @@ function wire() {
       generate();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      setWarning(null);
       clearResults();
     }
   };

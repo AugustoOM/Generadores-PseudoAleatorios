@@ -402,6 +402,16 @@ button:disabled {
   font-weight: 900;
 }
 
+.warning {
+  margin-top: 12px;
+  border: 2px solid var(--yellow);
+  padding: 10px;
+  background: #fff5cf;
+  color: #6b5200;
+  font-family: var(--mono);
+  font-weight: 900;
+}
+
 .outputColumn {
   display: grid;
   gap: 16px;

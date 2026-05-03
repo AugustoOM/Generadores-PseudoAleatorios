@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 
 from prng.generators import (
     lagged_fibonacci,
@@ -47,6 +48,11 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.method == "middle-square":
+        if args.seed == 0:
+            print(
+                "ADVERTENCIA: usar semilla 0/0000 en cuadrados medios degenera rapidamente la secuencia.",
+                file=sys.stderr,
+            )
         gen = middle_square(args.seed, digits=args.digits)
     elif args.method == "fibonacci":
         if args.seed2 is None:

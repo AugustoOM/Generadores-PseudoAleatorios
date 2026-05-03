@@ -3,126 +3,200 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Generadores Pseudoaleatorios</title>
-    <script type="module" crossorigin src="/assets/index-CBdGmUpm.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CeKvNpuy.css">
+    <title>Banco PRNG</title>
+    <script type="module" crossorigin src="/assets/index-XAGjB8xE.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DLPypud1.css">
   </head>
   <body>
-    <div class="app">
-      <header class="header">
-        <div>
-          <h1>Generadores Pseudoaleatorios</h1>
-          <p class="subtitle">Cuadrados medios · Fibonacci (retardado) · Multiplicativo</p>
-        </div>
-        <div class="badge">Educativo</div>
-      </header>
+    <div class="desk">
+      <aside class="rail" aria-label="Identificacion del banco">
+        <span>PRNG</span>
+        <strong>004</strong>
+        <small>SIM-LAB</small>
+      </aside>
 
-      <main class="grid">
-        <section class="card">
-          <h2>Método y parámetros</h2>
-
-          <div class="row">
-            <label for="method">Método</label>
-            <select id="method">
-              <option value="middle-square">Cuadrados medios</option>
-              <option value="fibonacci">Fibonacci (retardado)</option>
-              <option value="multiplicative">Multiplicativo (LCG)</option>
-            </select>
+      <div class="page">
+        <header class="masthead">
+          <div>
+            <p class="stamp">Banco de pruebas / numeros pseudoaleatorios</p>
+            <h1>Generadores Pseudoaleatorios</h1>
           </div>
-
-          <div class="row">
-            <label for="seed">Semilla (seed)</label>
-            <input id="seed" type="number" inputmode="numeric" value="12345" />
+          <div class="plate">
+            <span>Estado</span>
+            <strong>OPERATIVO</strong>
           </div>
+        </header>
 
-          <div class="method method-fibonacci">
-            <div class="row">
-              <label for="seed2">Semilla 2 (seed2)</label>
-              <input id="seed2" type="number" inputmode="numeric" value="67890" />
+        <main class="bench">
+          <section class="module inputModule" aria-labelledby="controls-title">
+            <div class="moduleTop">
+              <span class="tag">Entrada</span>
+              <h2 id="controls-title">Ajuste del metodo</h2>
             </div>
-          </div>
 
-          <div class="row">
-            <label for="count">Cantidad (n)</label>
-            <input id="count" type="number" inputmode="numeric" min="1" value="10" />
-          </div>
-
-          <div class="method method-middle-square">
-            <div class="row">
-              <label for="digits">Dígitos</label>
-              <input id="digits" type="number" inputmode="numeric" min="2" step="2" value="6" />
+            <div class="field full">
+              <label for="method">Metodo</label>
+              <select id="method">
+                <option value="middle-square">Cuadrados medios</option>
+                <option value="fibonacci">Fibonacci retardado</option>
+                <option value="multiplicative">Multiplicativo (LCG)</option>
+                <option value="mixed">Mixto (LCG)</option>
+              </select>
             </div>
-            <p class="hint">
-              En cuadrados medios, si cae en ciclos cortos o llega a 0, probá otra semilla o más dígitos.
-            </p>
-          </div>
 
-          <div class="method method-fibonacci">
-            <div class="row two">
-              <div>
-                <label for="j">j</label>
-                <input id="j" type="number" inputmode="numeric" min="1" value="24" />
-              </div>
-              <div>
-                <label for="k">k</label>
-                <input id="k" type="number" inputmode="numeric" min="2" value="55" />
+            <div id="methodInfo" class="note" aria-live="polite">
+              <strong>Cuadrados medios</strong>
+              <span>Eleva la semilla al cuadrado y toma los digitos centrales.</span>
+            </div>
+
+            <div class="field method method-middle-square method-fibonacci">
+              <label for="seed">Semilla</label>
+              <input id="seed" type="number" inputmode="numeric" value="12345" />
+            </div>
+
+            <div class="method method-fibonacci">
+              <div class="field">
+                <label for="seed2">Semilla 2</label>
+                <input id="seed2" type="number" inputmode="numeric" value="67890" />
               </div>
             </div>
-            <div class="row">
-              <label for="mFib">m (módulo)</label>
-              <input id="mFib" type="number" inputmode="numeric" min="2" value="2147483647" />
+
+            <div class="field method method-middle-square method-fibonacci method-multiplicative">
+              <label for="count">Cantidad</label>
+              <input id="count" type="number" inputmode="numeric" min="1" value="10" />
             </div>
-          </div>
 
-          <div class="method method-multiplicative">
-            <div class="row">
-              <label for="a">a (multiplicador)</label>
-              <input id="a" type="number" inputmode="numeric" min="1" value="48271" />
+            <div class="method method-middle-square">
+              <div class="field">
+                <label for="digits">Digitos centrales</label>
+                <input id="digits" type="number" inputmode="numeric" min="1" value="4" />
+              </div>
+              <p class="hint">Se extrae el bloque central despues de elevar cada estado al cuadrado.</p>
             </div>
-            <div class="row">
-              <label for="mLcg">m (módulo)</label>
-              <input id="mLcg" type="number" inputmode="numeric" min="2" value="2147483647" />
+
+            <div class="method method-fibonacci">
+              <div class="fieldPair">
+                <div class="field">
+                  <label for="j">Retardo j</label>
+                  <input id="j" type="number" inputmode="numeric" min="1" value="24" />
+                </div>
+                <div class="field">
+                  <label for="k">Retardo k</label>
+                  <input id="k" type="number" inputmode="numeric" min="2" value="55" />
+                </div>
+              </div>
+              <div class="field">
+                <label for="mFib">Modulo m</label>
+                <input id="mFib" type="number" inputmode="numeric" min="2" value="2147483647" />
+              </div>
             </div>
-          </div>
 
-          <div class="actions">
-            <button id="generate" class="primary">Generar</button>
-            <button id="copy" class="ghost" disabled>Copiar salida</button>
-          </div>
-
-          <div id="error" class="error" hidden></div>
-        </section>
-
-        <section class="card">
-          <div class="cardHeader">
-            <h2>Salida</h2>
-            <div class="meta">
-              <span id="summary" class="summary">—</span>
+            <div class="method method-multiplicative">
+              <div class="equation">X<sub>i+1</sub> = (a &middot; X<sub>i</sub>) mod m</div>
+              <div class="field">
+                <label for="x0Lcg">X<sub>0</sub></label>
+                <input id="x0Lcg" type="number" inputmode="numeric" value="12345" />
+              </div>
+              <div class="field">
+                <label for="aLcg">Multiplicador a</label>
+                <input id="aLcg" type="text" value="48271" />
+              </div>
+              <div class="field">
+                <label for="mLcgInput">Modulo m</label>
+                <input id="mLcgInput" type="text" value="2*31-1" />
+              </div>
             </div>
-          </div>
 
-          <div class="output">
-            <table class="table" aria-label="Salida del generador">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>u \u2208 [0,1)</th>
-                  <th>valor entero</th>
-                </tr>
-              </thead>
-              <tbody id="tbody"></tbody>
-            </table>
-          </div>
-        </section>
-      </main>
+            <div class="method method-mixed">
+              <div class="equation">X<sub>i+1</sub> = (a &middot; X<sub>i</sub> + c) mod m</div>
+              <div class="field">
+                <label for="x0Mixed">X<sub>0</sub></label>
+                <input id="x0Mixed" type="number" inputmode="numeric" value="15" />
+              </div>
+              <div class="fieldPair">
+                <div class="field">
+                  <label for="aMixed">Multiplicador a</label>
+                  <input id="aMixed" type="number" inputmode="numeric" min="1" value="8" />
+                </div>
+                <div class="field">
+                  <label for="cMixed">Incremento c</label>
+                  <input id="cMixed" type="number" inputmode="numeric" value="16" />
+                </div>
+              </div>
+              <div class="field">
+                <label for="mMixed">Modulo m</label>
+                <input id="mMixed" type="number" inputmode="numeric" min="2" value="100" />
+              </div>
 
-      <footer class="footer">
-        <span>Hecho con TypeScript, HTML y CSS.</span>
-        <span class="sep">·</span>
-        <span>No usar para criptografía.</span>
-      </footer>
+              <div id="hull-dobell" class="checklist" hidden>
+                <h3>Hull-Dobell</h3>
+                <ul>
+                  <li id="hd-c1">m y c son coprimos</li>
+                  <li id="hd-c2">(a - 1) es divisible por los factores primos de m</li>
+                  <li id="hd-c3">Si 4 divide a m, entonces 4 divide a (a - 1)</li>
+                </ul>
+                <p id="hd-status"></p>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button id="generate" class="run" type="button">Ejecutar</button>
+              <button id="copy" class="copy" type="button" disabled>Copiar U</button>
+            </div>
+
+            <div id="error" class="error" hidden></div>
+            <div id="warning" class="warning" hidden></div>
+          </section>
+
+          <section class="outputColumn" aria-labelledby="results-title">
+            <div class="module readout">
+              <div>
+                <span class="tag">Salida</span>
+                <h2 id="results-title">Registro de secuencia</h2>
+              </div>
+              <p id="summary" class="summary">Esperando datos</p>
+            </div>
+
+            <div class="meters" aria-label="Resumen numerico">
+              <div class="meter">
+                <span>n</span>
+                <strong id="stat-count">0</strong>
+              </div>
+              <div class="meter">
+                <span>min(u)</span>
+                <strong id="stat-min">-</strong>
+              </div>
+              <div class="meter">
+                <span>max(u)</span>
+                <strong id="stat-max">-</strong>
+              </div>
+            </div>
+
+            <div class="module tableModule">
+              <div class="output">
+                <table class="table" aria-label="Salida del generador">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>u en [0,1)</th>
+                      <th>Calculo</th>
+                      <th>X<sub>i</sub></th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </main>
+
+        <footer class="footer">
+          <span>Uso educativo</span>
+          <span>No apto para criptografia</span>
+          <span>Ctrl + Enter ejecuta</span>
+        </footer>
+      </div>
     </div>
 
   </body>
 </html>
-
