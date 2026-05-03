@@ -10,7 +10,7 @@
       <header class="header">
         <div>
           <h1>Generadores Pseudoaleatorios</h1>
-          <p class="subtitle">Cuadrados medios · Fibonacci (retardado) · Multiplicativo</p>
+          <p class="subtitle">Cuadrados medios · Fibonacci (retardado) · Multiplicativo · Mixto</p>
         </div>
         <div class="badge">Educativo</div>
       </header>
@@ -25,10 +25,11 @@
               <option value="middle-square">Cuadrados medios</option>
               <option value="fibonacci">Fibonacci (retardado)</option>
               <option value="multiplicative">Multiplicativo (LCG)</option>
+              <option value="mixed">Mixto (LCG)</option>
             </select>
           </div>
 
-          <div class="row">
+          <div class="row method method-non-mixed">
             <label for="seed">Semilla (seed)</label>
             <input id="seed" type="number" inputmode="numeric" value="12345" />
           </div>
@@ -40,7 +41,7 @@
             </div>
           </div>
 
-          <div class="row">
+          <div class="row method method-non-mixed">
             <label for="count">Cantidad (n)</label>
             <input id="count" type="number" inputmode="numeric" min="1" value="10" />
           </div>
@@ -80,6 +81,21 @@
             <div class="row">
               <label for="mLcg">m (módulo)</label>
               <input id="mLcg" type="number" inputmode="numeric" min="2" value="2147483647" />
+            </div>
+          </div>
+
+          <div class="method method-mixed">
+            <div class="row">
+              <label for="aMixed">a (multiplicador)</label>
+              <input id="aMixed" type="number" inputmode="numeric" min="1" value="1664525" />
+            </div>
+            <div class="row">
+              <label for="cMixed">c (incremento)</label>
+              <input id="cMixed" type="number" inputmode="numeric" value="1013904223" />
+            </div>
+            <div class="row">
+              <label for="mMixed">m (módulo)</label>
+              <input id="mMixed" type="number" inputmode="numeric" min="2" value="4294967296" />
             </div>
           </div>
 

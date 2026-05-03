@@ -75,3 +75,60 @@ export function* multiplicativeLCG(seed: bigint, a: bigint, m: bigint): Generato
   }
 }
 
+export function* mixedLCG(seed: bigint, a: bigint, c: bigint, m: bigint): Generator<PRNGOutput> {
+  if (m <= 1n) throw new Error("m must be > 1");
+  if (a <= 0n || a >= m) throw new Error("a must satisfy 0 < a < m");
+
+  let inc = c % m;
+  if (inc < 0n) inc += m;
+
+  let x = seed % m;
+  if (x < 0n) x += m;
+
+  while (true) {
+    x = (a * x + inc) % m;
+    yield { u: Number(x) / Number(m), x };
+  }
+}
+
+function gcdBigInt(a: bigint, b: bigint): bigint {
+  let x = a < 0n ? -a : a;
+  let y = b < 0n ? -b : b;
+  while (y !== 0n) {
+    const t = x % y;
+    x = y;
+    y = t;
+  }
+  return x;
+}
+
+function uniquePrimeFactors(n: bigint): bigint[] {
+  const factors: bigint[] = [];
+  let x = n;
+
+  let p = 2n;
+  while (p * p <= x) {
+    if (x % p === 0n) {
+      factors.push(p);
+      while (x % p === 0n) x /= p;
+    }
+    p = p === 2n ? 3n : p + 2n;
+  }
+
+  if (x > 1n) factors.push(x);
+  return factors;
+}
+
+export function mixedLCGHasFullPeriod(a: bigint, c: bigint, m: bigint): boolean {
+  if (m <= 1n) throw new Error("m must be > 1");
+  if (gcdBigInt(c, m) !== 1n) return false;
+
+  const factors = uniquePrimeFactors(m);
+  for (const p of factors) {
+    if ((a - 1n) % p !== 0n) return false;
+  }
+
+  if (m % 4n === 0n && (a - 1n) % 4n !== 0n) return false;
+  return true;
+}
+

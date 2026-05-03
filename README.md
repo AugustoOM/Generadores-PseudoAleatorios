@@ -1,10 +1,11 @@
 # Generadores Pseudoaleatorios (Python)
 
-Este proyecto implementa 3 generadores de números pseudoaleatorios:
+Este proyecto implementa 4 generadores de números pseudoaleatorios:
 
 - **Cuadrados medios** (Middle-square)
 - **Fibonacci con retardo** (Lagged Fibonacci)
 - **Multiplicativo** (LCG multiplicativo)
+- **Mixto** (LCG mixto)
 
 ## Requisitos
 
@@ -19,7 +20,10 @@ Generar 10 números de cada método:
 python cli.py --method middle-square --seed 154 --n 10 --digits 6
 python cli.py --method fibonacci --seed 12345 --seed2 67890 --n 10
 python cli.py --method multiplicative --seed 12345 --n 10
+python cli.py --method mixed --seed 12345 --a 1664525 --c 1013904223 --m 4294967296 --n 10
 ```
+
+En el modo `mixed`, al final se imprime si cumple (o no) el criterio de periodo completo (m) según Hull-Dobell.
 
 ## Ejemplo (ejercicio) — Fibonacci módulo m
 
@@ -51,7 +55,7 @@ python cli.py --help
 
 ## Interfaz web (TypeScript + HTML + CSS)
 
-La carpeta `web/` contiene una interfaz web para probar los 3 métodos.
+La carpeta `web/` contiene una interfaz web para probar los 4 métodos.
 
 ```bash
 cd web

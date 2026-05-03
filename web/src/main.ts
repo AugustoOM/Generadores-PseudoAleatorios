@@ -1,7 +1,14 @@
 import "./style.css";
-import { laggedFibonacci, middleSquare, multiplicativeLCG, type PRNGOutput } from "./prng";
+import {
+  laggedFibonacci,
+  middleSquare,
+  multiplicativeLCG,
+  mixedLCG,
+  mixedLCGHasFullPeriod,
+  type PRNGOutput,
+} from "./prng";
 
-type Method = "middle-square" | "fibonacci" | "multiplicative";
+type Method = "middle-square" | "fibonacci" | "multiplicative" | "mixed";
 
 function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -34,7 +41,7 @@ function formatU(u: number): string {
 }
 
 function buildGenerator(method: Method): Generator<PRNGOutput> {
-  const seed = toBigIntStrict(el<HTMLInputElement>("seed").value, "seed");
+  const seed = method === "mixed" ? 0n : toBigIntStrict(el<HTMLInputElement>("seed").value, "seed");
 
   if (method === "middle-square") {
     const digits = toIntStrict(el<HTMLInputElement>("digits").value, "digits");
@@ -49,9 +56,16 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
     return laggedFibonacci(seed, seed2, j, k, m);
   }
 
-  const a = toBigIntStrict(el<HTMLInputElement>("a").value, "a");
-  const m = toBigIntStrict(el<HTMLInputElement>("mLcg").value, "m");
-  return multiplicativeLCG(seed, a, m);
+  if (method === "multiplicative") {
+    const a = toBigIntStrict(el<HTMLInputElement>("a").value, "a");
+    const m = toBigIntStrict(el<HTMLInputElement>("mLcg").value, "m");
+    return multiplicativeLCG(seed, a, m);
+  }
+
+  const a = toBigIntStrict(el<HTMLInputElement>("aMixed").value, "a");
+  const c = toBigIntStrict(el<HTMLInputElement>("cMixed").value, "c");
+  const m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
+  return mixedLCG(seed, a, c, m);
 }
 
 function updateMethodVisibility(method: Method) {
@@ -59,6 +73,8 @@ function updateMethodVisibility(method: Method) {
   if (method === "middle-square") setHidden(".method-middle-square", false);
   if (method === "fibonacci") setHidden(".method-fibonacci", false);
   if (method === "multiplicative") setHidden(".method-multiplicative", false);
+  if (method === "mixed") setHidden(".method-mixed", false);
+  setHidden(".method-non-mixed", method === "mixed");
 }
 
 function render(rows: PRNGOutput[]) {
@@ -97,9 +113,9 @@ function setError(message: string | null) {
   box.textContent = message;
 }
 
-function summarize(method: Method, n: number) {
+function summarize(method: Method, n: number, extra?: string) {
   const summary = el<HTMLSpanElement>("summary");
-  summary.textContent = `${method} · n=${n}`;
+  summary.textContent = extra ? `${method} · n=${n} · ${extra}` : `${method} · n=${n}`;
 }
 
 function getCurrentMethod(): Method {
@@ -111,14 +127,23 @@ function generate() {
   const method = getCurrentMethod();
   updateMethodVisibility(method);
 
-  const n = toIntStrict(el<HTMLInputElement>("count").value, "n");
+  const n = method === "mixed" ? 10 : toIntStrict(el<HTMLInputElement>("count").value, "n");
   if (n <= 0) throw new Error("n must be > 0");
 
   const gen = buildGenerator(method);
   const out: PRNGOutput[] = [];
   for (let i = 0; i < n; i += 1) out.push(gen.next().value);
 
-  summarize(method, n);
+  if (method === "mixed") {
+    const a = toBigIntStrict(el<HTMLInputElement>("aMixed").value, "a");
+    const c = toBigIntStrict(el<HTMLInputElement>("cMixed").value, "c");
+    const m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
+    const full = mixedLCGHasFullPeriod(a, c, m);
+    const extra = full ? `period=${m.toString()} (completo)` : "period< m (no completo)";
+    summarize(method, n, extra);
+  } else {
+    summarize(method, n);
+  }
   render(out);
 
   const copyBtn = el<HTMLButtonElement>("copy");

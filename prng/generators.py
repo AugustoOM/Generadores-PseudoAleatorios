@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+import math
 
 
 def middle_square(seed: int, *, digits: int = 8) -> Iterator[float]:
@@ -128,4 +129,65 @@ def multiplicative_lcg(
     while True:
         x = (a * x) % m
         yield x / m
+
+
+def mixed_lcg(
+    seed: int,
+    *,
+    a: int = 48271,
+    c: int = 1,
+    m: int = 2**31 - 1,
+) -> Iterator[float]:
+    """
+    Generador congruencial lineal mixto:
+
+    x_{n+1} = (a * x_n + c) mod m
+
+    Produce floats en [0, 1).
+    """
+    if m <= 1:
+        raise ValueError("m must be > 1")
+    if a <= 0 or a >= m:
+        raise ValueError("a must satisfy 0 < a < m")
+
+    c = c % m
+    if c < 0:
+        c += m
+
+    x = seed % m
+    if x < 0:
+        x += m
+
+    while True:
+        x = (a * x + c) % m
+        yield x / m
+
+
+def mixed_lcg_has_full_period(a: int, c: int, m: int) -> bool:
+    """
+    Chequea el criterio de Hull-Dobell para periodo completo (m) en LCG mixto.
+    """
+    if m <= 1:
+        raise ValueError("m must be > 1")
+
+    if math.gcd(c, m) != 1:
+        return False
+
+    n = m
+    p = 2
+    while p * p <= n:
+        if n % p == 0:
+            if (a - 1) % p != 0:
+                return False
+            while n % p == 0:
+                n //= p
+        p = 3 if p == 2 else p + 2
+
+    if n > 1 and (a - 1) % n != 0:
+        return False
+
+    if m % 4 == 0 and (a - 1) % 4 != 0:
+        return False
+
+    return True
 
