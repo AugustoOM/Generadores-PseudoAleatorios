@@ -10,6 +10,25 @@ import {
 
 type Method = "middle-square" | "fibonacci" | "multiplicative" | "mixed";
 
+const methodDetails: Record<Method, { name: string; description: string }> = {
+  "middle-square": {
+    name: "Cuadrados medios",
+    description: "Eleva la semilla al cuadrado y toma los digitos centrales.",
+  },
+  fibonacci: {
+    name: "Fibonacci retardado",
+    description: "Combina estados separados por retardos j y k dentro de un modulo m.",
+  },
+  multiplicative: {
+    name: "LCG multiplicativo",
+    description: "Actualiza cada estado multiplicando por a y reduciendo modulo m.",
+  },
+  mixed: {
+    name: "LCG mixto",
+    description: "Suma un incremento c al generador congruencial y valida Hull-Dobell.",
+  },
+};
+
 function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
   if (!node) throw new Error(`Missing element #${id}`);
@@ -90,7 +109,14 @@ function updateMethodVisibility(method: Method) {
   if (method === "fibonacci") setHidden(".method-fibonacci", false);
   if (method === "multiplicative") setHidden(".method-multiplicative", false);
   if (method === "mixed") setHidden(".method-mixed", false);
-  if (method === "mixed") setHidden(".method-mixed", false);
+
+  const info = el<HTMLDivElement>("methodInfo");
+  info.innerHTML = "";
+  const title = document.createElement("strong");
+  title.textContent = methodDetails[method].name;
+  const desc = document.createElement("span");
+  desc.textContent = methodDetails[method].description;
+  info.append(title, desc);
 }
 
 function render(rows: PRNGOutput[]) {
@@ -103,7 +129,7 @@ function render(rows: PRNGOutput[]) {
 
     const tdIdx = document.createElement("td");
     tdIdx.className = "num";
-    tdIdx.textContent = String(i); // Change to 0-indexed to match Xi notation better if desired
+    tdIdx.textContent = String(i);
 
     const tdU = document.createElement("td");
     tdU.className = "num";
@@ -122,6 +148,26 @@ function render(rows: PRNGOutput[]) {
   }
 }
 
+function renderStats(rows: PRNGOutput[]) {
+  el<HTMLElement>("stat-count").textContent = String(rows.length);
+
+  if (rows.length === 0) {
+    el<HTMLElement>("stat-min").textContent = "-";
+    el<HTMLElement>("stat-max").textContent = "-";
+    return;
+  }
+
+  const values = rows.map((r) => r.u).filter(Number.isFinite);
+  el<HTMLElement>("stat-min").textContent = formatU(Math.min(...values));
+  el<HTMLElement>("stat-max").textContent = formatU(Math.max(...values));
+}
+
+function clearResults() {
+  render([]);
+  renderStats([]);
+  el<HTMLButtonElement>("copy").disabled = true;
+}
+
 function setError(message: string | null) {
   const box = el<HTMLDivElement>("error");
   if (!message) {
@@ -135,15 +181,9 @@ function setError(message: string | null) {
 
 function summarize(method: Method, n: number, extra?: string) {
   const summary = el<HTMLSpanElement>("summary");
-  const methodNames: Record<Method, string> = {
-    "middle-square": "Cuadrados Medios",
-    fibonacci: "Fibonacci Retardado",
-    multiplicative: "LCG Multiplicativo",
-    mixed: "LCG Mixto",
-  };
   summary.textContent = extra
-    ? `${methodNames[method]} | Generados: ${n} | ${extra}`
-    : `${methodNames[method]} | Generados: ${n}`;
+    ? `${methodDetails[method].name} | Generados: ${n} | ${extra}`
+    : `${methodDetails[method].name} | Generados: ${n}`;
 }
 
 function getCurrentMethod(): Method {
@@ -215,26 +255,41 @@ function generate() {
     summarize(method, out.length);
   }
   render(out);
+  renderStats(out);
 
   const copyBtn = el<HTMLButtonElement>("copy");
   copyBtn.disabled = out.length === 0;
   copyBtn.onclick = async () => {
     const text = out.map((r) => formatU(r.u)).join("\n");
     await navigator.clipboard.writeText(text);
+    const previous = copyBtn.innerHTML;
+    copyBtn.innerHTML = '<span aria-hidden="true">OK</span>Copiado';
+    window.setTimeout(() => {
+      copyBtn.innerHTML = previous;
+    }, 1200);
   };
 }
 
 function wire() {
   const method = el<HTMLSelectElement>("method");
-  method.addEventListener("change", () => updateMethodVisibility(getCurrentMethod()));
+  method.addEventListener("change", () => {
+    updateMethodVisibility(getCurrentMethod());
+    setError(null);
+  });
   updateMethodVisibility(getCurrentMethod());
 
-  el<HTMLButtonElement>("generate").addEventListener("click", () => {
+  const runGenerate = () => {
     try {
       generate();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      clearResults();
     }
+  };
+
+  el<HTMLButtonElement>("generate").addEventListener("click", runGenerate);
+  document.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") runGenerate();
   });
 
   // Generate an initial sample
