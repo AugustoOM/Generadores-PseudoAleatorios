@@ -23,10 +23,24 @@ function setHidden(selector: string, hidden: boolean) {
 }
 
 function toBigIntStrict(value: string, name: string): bigint {
-  const s = value.trim();
+  const s = value.trim().replace(/\s+/g, "");
   if (s.length === 0) throw new Error(`${name} is required`);
-  if (!/^-?\d+$/.test(s)) throw new Error(`${name} must be an integer`);
-  return BigInt(s);
+
+  try {
+    // Soporte para potencia con '*' (ej: 2*31-1)
+    const match = s.match(/^(\d+)\*(\d+)(?:([-+])(\d+))?$/);
+    if (match) {
+      const base = BigInt(match[1]);
+      const exp = BigInt(match[2]);
+      let res = base ** exp;
+      if (match[3] === "-") res -= BigInt(match[4]);
+      if (match[3] === "+") res += BigInt(match[4]);
+      return res;
+    }
+    return BigInt(s);
+  } catch {
+    throw new Error(`${name} debe ser un número entero o expresión (ej: 2*31-1)`);
+  }
 }
 
 function toIntStrict(value: string, name: string): number {
@@ -57,9 +71,9 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
   }
 
   if (method === "multiplicative") {
-    const seed = toBigIntStrict(el<HTMLInputElement>("seed").value, "seed");
-    const a = toBigIntStrict(el<HTMLInputElement>("a").value, "a");
-    const m = toBigIntStrict(el<HTMLInputElement>("mLcg").value, "m");
+    const seed = toBigIntStrict(el<HTMLInputElement>("x0Lcg").value, "X0");
+    const a = toBigIntStrict(el<HTMLInputElement>("aLcg").value, "a");
+    const m = toBigIntStrict(el<HTMLInputElement>("mLcgInput").value, "m");
     return multiplicativeLCG(seed, a, m);
   }
 
@@ -140,17 +154,20 @@ function generate() {
   const gen = buildGenerator(method);
   const out: PRNGOutput[] = [];
 
-  if (method === "mixed") {
-    const m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
+  if (method === "mixed" || method === "multiplicative") {
+    const m =
+      method === "mixed"
+        ? toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m")
+        : toBigIntStrict(el<HTMLInputElement>("mLcgInput").value, "m");
     const countValue = el<HTMLInputElement>("count").value.trim();
-    
+
     if (countValue === "" || countValue === "0") {
       // Auto mode: Stop at first repeat
       const seen = new Set<bigint>();
       for (let i = 0; i < Number(m) + 2; i++) {
         const val = gen.next().value;
         if (seen.has(val.x)) {
-          out.push(val); // Show the duplicate at the end
+          out.push(val);
           break;
         }
         seen.add(val.x);
@@ -158,7 +175,6 @@ function generate() {
         if (out.length > 2000) break;
       }
     } else {
-      // Manual mode
       const n = toIntStrict(countValue, "n");
       for (let i = 0; i < n; i++) out.push(gen.next().value);
     }

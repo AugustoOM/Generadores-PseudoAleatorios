@@ -29,7 +29,7 @@
             </select>
           </div>
 
-          <div class="row method method-non-mixed">
+          <div class="row method method-middle-square method-fibonacci">
             <label for="seed">Semilla (seed)</label>
             <input id="seed" type="number" inputmode="numeric" value="12345" />
           </div>
@@ -43,8 +43,8 @@
 
           <div class="row method">
             <label for="count">Cantidad (n)</label>
-            <input id="count" type="number" inputmode="numeric" min="0" value="0" placeholder="0 para ciclo completo" />
-            <p class="hint">En Mixto, usa 0 para generar hasta que se repita un número.</p>
+            <input id="count" type="number" inputmode="numeric" min="0" value="10" placeholder="0 para ciclo completo" />
+            <p class="hint">Usa 0 para generar hasta que se repita un número (ciclo).</p>
           </div>
 
           <div class="method method-middle-square">
@@ -75,13 +75,20 @@
           </div>
 
           <div class="method method-multiplicative">
-            <div class="row">
-              <label for="a">a (multiplicador)</label>
-              <input id="a" type="number" inputmode="numeric" min="1" value="48271" />
+            <div class="formula">
+              X<sub>i+1</sub> = (a · X<sub>i</sub>) mod m
             </div>
             <div class="row">
-              <label for="mLcg">m (módulo)</label>
-              <input id="mLcg" type="number" inputmode="numeric" min="2" value="2147483647" />
+              <label for="x0Lcg">X<sub>0</sub> (semilla)</label>
+              <input id="x0Lcg" type="number" inputmode="numeric" value="12345" />
+            </div>
+            <div class="row">
+              <label for="aLcg">a (multiplicador)</label>
+              <input id="aLcg" type="text" value="48271" />
+            </div>
+            <div class="row">
+              <label for="mLcgInput">m (módulo)</label>
+              <input id="mLcgInput" type="text" value="2*31-1" />
             </div>
           </div>
 
