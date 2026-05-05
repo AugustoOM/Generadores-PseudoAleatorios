@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 import math
+from datetime import datetime
 
 
 def middle_square(seed: int, *, digits: int = 8) -> Iterator[float]:
@@ -29,6 +30,14 @@ def middle_square(seed: int, *, digits: int = 8) -> Iterator[float]:
     d = digits // 2
     mod = 10**d
     x = seed % mod
+    
+    # Detect zero seed or zero square, regenerate from timestamp
+    if x == 0 or (x * x) == 0:
+        now = datetime.now()
+        ts_seed = (now.second * 1000 + now.microsecond // 1000) % 10000
+        x = (ts_seed % mod) or 1
+    elif "00" in str(seed):
+        x = (x * 12) % mod
 
     while True:
         s = str(x * x)

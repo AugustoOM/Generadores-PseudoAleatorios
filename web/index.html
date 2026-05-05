@@ -59,8 +59,8 @@
               </div>
             </div>
 
-            <div class="field method method-middle-square method-fibonacci method-multiplicative">
-              <label for="count">Cantidad</label>
+            <div class="field method method-middle-square method-fibonacci method-multiplicative method-mixed">
+              <label for="count">Cantidad (n)</label>
               <input id="count" type="number" inputmode="numeric" min="1" value="10" />
             </div>
 
@@ -171,6 +171,9 @@
             </div>
 
             <div class="module tableModule">
+              <div class="tableTools">
+                <button id="toggleTable" class="copy" type="button" hidden>Ver todas las iteraciones</button>
+              </div>
               <div class="output">
                 <table class="table" aria-label="Salida del generador">
                   <thead>
@@ -184,6 +187,18 @@
                   <tbody id="tbody"></tbody>
                 </table>
               </div>
+            </div>
+
+            <div class="module histogramModule" aria-labelledby="hist-title">
+              <div class="histTop">
+                <div>
+                  <span class="tag">Analitica</span>
+                  <h3 id="hist-title">Histograma de frecuencia</h3>
+                </div>
+                <button id="toggleHistogram" class="copy" type="button">Ver 1000 iteraciones</button>
+              </div>
+              <p id="hist-meta" class="histMeta">Sin datos</p>
+              <div id="hist-bars" class="histBars" aria-live="polite"></div>
             </div>
           </section>
         </main>

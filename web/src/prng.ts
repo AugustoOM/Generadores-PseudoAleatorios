@@ -13,6 +13,7 @@ function pow10Big(n: number): bigint {
 export function* middleSquare(seed: bigint, d: number): Generator<PRNGOutput> {
   if (d <= 0) throw new Error("Dígitos a extraer debe ser > 0");
 
+  const seedText = seed.toString();
   let sSeed = seed.toString();
   // Si la semilla es más larga que D, tomamos su centro para empezar
   if (sSeed.length > d) {
@@ -25,9 +26,28 @@ export function* middleSquare(seed: bigint, d: number): Generator<PRNGOutput> {
 
   let x = BigInt(sSeed);
   const mod = pow10Big(d);
+  let regenerationMsg: string | null = null;
+
+  // Check if seed is zero or square is zero
+  if (x === 0n || (x * x) === 0n) {
+    const now = new Date();
+    const tsSeed = (now.getSeconds() * 1000 + now.getMilliseconds()) % 10000;
+    x = BigInt(tsSeed % Number(mod)) || 1n;
+    regenerationMsg = `Debido a que la semilla 0 degenera rápidamente, se generó una nueva semilla: ${tsSeed}`;
+  } else if (seedText.includes("00")) {
+    x = (x * 12n) % mod;
+  }
 
   // Yield X0 (la semilla ya recortada al centro si era necesario)
-  yield { u: Number(x) / Number(mod), x, aux: "Semilla (Centro)" };
+  let auxMsg: string;
+  if (regenerationMsg) {
+    auxMsg = regenerationMsg;
+  } else if (seedText.includes("00")) {
+    auxMsg = "Semilla (x12)";
+  } else {
+    auxMsg = "Semilla (Centro)";
+  }
+  yield { u: Number(x) / Number(mod), x, aux: auxMsg };
 
   while (true) {
     const square = x * x;
