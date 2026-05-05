@@ -13,6 +13,7 @@ function pow10Big(n: number): bigint {
 export function* middleSquare(seed: bigint, d: number): Generator<PRNGOutput> {
   if (d <= 0) throw new Error("Dígitos a extraer debe ser > 0");
 
+  const seedText = seed.toString();
   let sSeed = seed.toString();
   // Si la semilla es más larga que D, tomamos su centro para empezar
   if (sSeed.length > d) {
@@ -25,9 +26,12 @@ export function* middleSquare(seed: bigint, d: number): Generator<PRNGOutput> {
 
   let x = BigInt(sSeed);
   const mod = pow10Big(d);
+  if (seedText.includes("00")) {
+    x = (x + 12n) % mod;
+  }
 
   // Yield X0 (la semilla ya recortada al centro si era necesario)
-  yield { u: Number(x) / Number(mod), x, aux: "Semilla (Centro)" };
+  yield { u: Number(x) / Number(mod), x, aux: seedText.includes("00") ? "Semilla (+12)" : "Semilla (Centro)" };
 
   while (true) {
     const square = x * x;
