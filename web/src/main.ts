@@ -121,14 +121,12 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
   }
 
   if (method === "middle-product") {
-    const x0Str = el<HTMLInputElement>("x0Prod").value;
-    const x1Str = el<HTMLInputElement>("x1Prod").value;
-    const x0 = toBigIntStrict(x0Str, "X0");
-    const x1 = toBigIntStrict(x1Str, "X1");
-    // Calculate D based on the string length of the inputs (as user entered them)
-    // or the string length of the resulting numbers. 
-    // User said "depende de la longitud de la semilla que se ingresa".
-    const d = Math.max(x0.toString().length, x1.toString().length);
+    const x0Raw = el<HTMLInputElement>("x0Prod").value.trim();
+    const x1Raw = el<HTMLInputElement>("x1Prod").value.trim();
+    const x0 = toBigIntStrict(x0Raw, "X0");
+    const x1 = toBigIntStrict(x1Raw, "X1");
+    // Detección automática de D según la longitud de X0
+    const d = x0Raw.length;
     return middleProduct(x0, x1, d);
   }
   
@@ -182,6 +180,7 @@ function renderTable(rows: any[], method: Method) {
 
   for (let i = 0; i < rows.length; i += 1) {
     const r = rows[i];
+    if (!r) continue;
     const tr = document.createElement("tr");
 
     const tdIdx = document.createElement("td");
@@ -512,17 +511,18 @@ function wire() {
     updateView();
   });
 
-  updateMethodVisibility(getCurrentMethod());
-
   const runGenerate = () => {
     try {
       generate();
+      setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setWarning(null);
       clearResults();
     }
   };
+
+  updateMethodVisibility(getCurrentMethod());
 
   el<HTMLButtonElement>("generate").addEventListener("click", runGenerate);
   document.addEventListener("keydown", (event) => {

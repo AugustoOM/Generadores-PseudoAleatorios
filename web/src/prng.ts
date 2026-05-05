@@ -92,37 +92,42 @@ export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generat
   while (true) {
     const prod = prev * curr;
     let s = prod.toString();
-    if (s.length < 5) s = s.padStart(5, "0");
+    const lMin = 2 * d - 1;
+    const lMax = 2 * d;
+    
+    // Solo completar con ceros si es menor al mínimo académico (2D-1)
+    if (s.length < lMin) s = s.padStart(lMin, "0");
     
     let v1 = 0n;
     let v2 = 0n;
     let center = "";
 
-    if (s.length === 5) {
-      center = s.slice(1, 4);
+    if (s.length === lMin) {
+      // Caso 2D-1 (ej: 5 dígitos para D=3) -> Tomamos D dígitos desde índice 1
+      center = s.slice(1, d + 1);
       v1 = BigInt(center);
       v2 = 0n;
     } else {
-      // 6 dígitos o más
-      const block = s.slice(1, 5);
-      center = block;
-      v1 = BigInt(block.slice(0, 3));
-      v2 = BigInt(block.slice(1, 4));
+      // Caso 2D o más (ej: 6 dígitos para D=3) -> Tomamos D+1 dígitos desde índice 1
+      center = s.slice(1, d + 2);
+      v1 = BigInt(center.slice(0, d));
+      v2 = BigInt(center.slice(1, d + 1));
     }
 
     yield {
       productA: s,
       productB: "-",
-      centerA: center.padStart(4, "0"),
+      centerA: center,
       centerB: "-",
-      val1Str: v1.toString().padStart(3, "0"),
-      val2Str: v2.toString().padStart(3, "0"),
+      val1Str: v1.toString().padStart(d, "0"),
+      val2Str: v2.toString().padStart(d, "0"),
       val1: v1,
       val2: v2,
       u1: Number(v1) / Number(mod),
       u2: Number(v2) / Number(mod),
       x: v1,
-      u: Number(v1) / Number(mod)
+      u: Number(v1) / Number(mod),
+      d: d
     };
 
     prev = curr;
