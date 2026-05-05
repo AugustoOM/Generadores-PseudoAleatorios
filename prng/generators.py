@@ -30,7 +30,7 @@ def middle_square(seed: int, *, digits: int = 8) -> Iterator[float]:
     mod = 10**d
     x = seed % mod
     if "00" in str(seed):
-        x = (x + 12) % mod
+        x = (x * 12) % mod
 
     while True:
         s = str(x * x)

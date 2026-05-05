@@ -27,11 +27,11 @@ export function* middleSquare(seed: bigint, d: number): Generator<PRNGOutput> {
   let x = BigInt(sSeed);
   const mod = pow10Big(d);
   if (seedText.includes("00")) {
-    x = (x + 12n) % mod;
+    x = (x * 12n) % mod;
   }
 
   // Yield X0 (la semilla ya recortada al centro si era necesario)
-  yield { u: Number(x) / Number(mod), x, aux: seedText.includes("00") ? "Semilla (+12)" : "Semilla (Centro)" };
+  yield { u: Number(x) / Number(mod), x, aux: seedText.includes("00") ? "Semilla (x12)" : "Semilla (Centro)" };
 
   while (true) {
     const square = x * x;

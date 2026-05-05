@@ -197,7 +197,7 @@ function getMiddleSquareZeroSeedWarning(): string | null {
     return "Advertencia: usar semilla con solo 0 o 000.. en cuadrados medios degenera rapidamente la secuencia.";
   }
   if (/^0+\d+$/.test(rawSeed)) {
-    return "Advertencia: al ingresar una cadena con la forma 00...xx, se eliminan los 0 a la izquierda para mejorar la precision.";
+    return "Advertencia: al ingresar una cadena con la forma 00...xx, se eliminan los 0 a la izquierda para mejorar la precisión.";
   }
   return null;
 }
