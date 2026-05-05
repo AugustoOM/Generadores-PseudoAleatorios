@@ -32,6 +32,7 @@ const methodDetails: Record<Method, { name: string; description: string }> = {
 const TOTAL_INTERNAL_GENERATIONS = 1000;
 const INITIAL_TABLE_LIMIT = 20;
 const HISTOGRAM_BINS = 10;
+const MAX_PERIOD_OUTPUT = 10000;
 
 type HistogramMode = "requested" | "full";
 
@@ -45,6 +46,13 @@ type GenerationViewState = {
 };
 
 let currentViewState: GenerationViewState | null = null;
+
+type PeriodResult = {
+  rows: PRNGOutput[];
+  period: number | null;
+  capped: boolean;
+  limit: number;
+};
 
 function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -63,8 +71,8 @@ function toBigIntStrict(value: string, name: string): bigint {
   if (s.length === 0) throw new Error(`${name} is required`);
 
   try {
-    // Soporte para potencia con '*' (ej: 2*31-1)
-    const match = s.match(/^(\d+)\*(\d+)(?:([-+])(\d+))?$/);
+    // Soporte para potencia con *, ** o ^ (ej: 2*31-1, 2**31-1, 2^31-1)
+    const match = s.match(/^(\d+)\s*(?:\*\*|\^|\*)\s*(\d+)(?:\s*([-+])\s*(\d+))?$/);
     if (match) {
       const base = BigInt(match[1]);
       const exp = BigInt(match[2]);
@@ -228,6 +236,7 @@ function updateView() {
   const histogramRows = histogramMode === "requested" ? requestedRows : fullRows;
   renderHistogram(histogramRows, histogramMode);
   const toggleHistogramBtn = el<HTMLButtonElement>("toggleHistogram");
+  toggleHistogramBtn.hidden = fullRows.length === requestedRows.length;
   toggleHistogramBtn.textContent = histogramMode === "requested"
     ? "Ver 1000 iteraciones"
     : `Ver n (${requestedN})`;
@@ -297,6 +306,30 @@ function summarize(method: Method, n: number, extra?: string) {
     : `${methodDetails[method].name} | Generados: ${n}`;
 }
 
+function generateUntilRepeat(gen: Generator<PRNGOutput>, limit: number): PeriodResult {
+  const seen = new Map<bigint, number>();
+  const rows: PRNGOutput[] = [];
+  let period: number | null = null;
+  const maxSteps = limit + 1;
+
+  for (let i = 0; i < maxSteps; i += 1) {
+    const val = gen.next().value;
+    if (seen.has(val.x)) {
+      period = i - (seen.get(val.x) ?? i);
+      break;
+    }
+    seen.set(val.x, i);
+    if (rows.length < limit) rows.push(val);
+  }
+
+  return {
+    rows,
+    period,
+    capped: rows.length === limit && period === null,
+    limit,
+  };
+}
+
 function getCurrentMethod(): Method {
   return el<HTMLSelectElement>("method").value as Method;
 }
@@ -307,43 +340,82 @@ function generate() {
   const method = getCurrentMethod();
   updateMethodVisibility(method);
 
-  const n = toIntStrict(el<HTMLInputElement>("count").value, "n");
-  if (n <= 0) throw new Error("n must be > 0");
-
   const gen = buildGenerator(method);
-  const fullRows: PRNGOutput[] = [];
-  for (let i = 0; i < TOTAL_INTERNAL_GENERATIONS; i += 1) {
-    fullRows.push(gen.next().value);
-  }
+  let fullRows: PRNGOutput[] = [];
+  let requestedRows: PRNGOutput[] = [];
+  let requestedN = 0;
+  let effectiveN = 0;
+  let expanded = false;
 
-  const effectiveN = Math.min(n, TOTAL_INTERNAL_GENERATIONS);
-  const requestedRows = fullRows.slice(0, effectiveN);
+  if (method === "mixed" || method === "multiplicative") {
+    const m = method === "mixed"
+      ? toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m")
+      : toBigIntStrict(el<HTMLInputElement>("mLcgInput").value, "m");
 
-  if (method === "mixed") {
-    const a = toBigIntStrict(el<HTMLInputElement>("aMixed").value, "a");
-    const c = toBigIntStrict(el<HTMLInputElement>("cMixed").value, "c");
-    const m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
-    const res = checkHullDobellDetailed(a, c, m);
+    let full = false;
+    if (method === "mixed") {
+      const a = toBigIntStrict(el<HTMLInputElement>("aMixed").value, "a");
+      const c = toBigIntStrict(el<HTMLInputElement>("cMixed").value, "c");
+      const res = checkHullDobellDetailed(a, c, m);
 
-    const box = el<HTMLDivElement>("hull-dobell");
-    box.hidden = false;
+      const box = el<HTMLDivElement>("hull-dobell");
+      box.hidden = false;
 
-    const updateCond = (id: string, ok: boolean) => {
-      const li = el(id);
-      li.className = ok ? "ok" : "fail";
-    };
-    updateCond("hd-c1", res.cond1);
-    updateCond("hd-c2", res.cond2);
-    updateCond("hd-c3", res.cond3);
+      const updateCond = (id: string, ok: boolean) => {
+        const li = el(id);
+        li.className = ok ? "ok" : "fail";
+      };
+      updateCond("hd-c1", res.cond1);
+      updateCond("hd-c2", res.cond2);
+      updateCond("hd-c3", res.cond3);
 
-    const full = res.cond1 && res.cond2 && res.cond3;
-    const status = el("hd-status");
-    status.textContent = full ? "Cumple Hull-Dobell (Periodo Completo)" : "No cumple (Periodo Incompleto)";
-    status.className = full ? "status-ok" : "status-fail";
+      full = res.cond1 && res.cond2 && res.cond3;
+      const status = el("hd-status");
+      status.textContent = full ? "Cumple Hull-Dobell (Periodo Completo)" : "No cumple (Periodo Incompleto)";
+      status.className = full ? "status-ok" : "status-fail";
+    } else {
+      el("hull-dobell").hidden = true;
+    }
 
-    const extra = full ? `Periodo esperado: ${m}` : "Periodo esperado: < m";
-    summarize(method, effectiveN, `${extra} | Internas: ${TOTAL_INTERNAL_GENERATIONS}`);
+    const maxPeriod = method === "mixed"
+      ? (full ? m : m)
+      : m - 1n;
+    const limit = maxPeriod > BigInt(MAX_PERIOD_OUTPUT) ? MAX_PERIOD_OUTPUT : Number(maxPeriod);
+
+    const periodResult = generateUntilRepeat(gen, limit);
+    fullRows = periodResult.rows;
+    requestedRows = periodResult.rows;
+    requestedN = requestedRows.length;
+    effectiveN = requestedRows.length;
+    expanded = requestedRows.length <= 200;
+
+    if (periodResult.capped) {
+      setWarning(`Salida limitada a ${periodResult.limit} valores para evitar demoras.`);
+    }
+
+    const periodLabel = periodResult.period === null ? "Periodo detectado: -" : `Periodo detectado: ${periodResult.period}`;
+    if (method === "mixed") {
+      const expected = full ? `Periodo esperado: ${m}` : "Periodo esperado: < m";
+      summarize(method, effectiveN, `${expected} | ${periodLabel}`);
+
+      if (full && periodResult.period !== null && periodResult.period !== Number(m)) {
+        setWarning("Hull-Dobell indica periodo m, pero se detecto una repeticion antes. Revisar parametros o semilla.");
+      }
+    } else {
+      const expected = m > 1n ? `Periodo esperado: <= ${m - 1n}` : "Periodo esperado: -";
+      summarize(method, effectiveN, `${expected} | ${periodLabel}`);
+    }
   } else {
+    const n = toIntStrict(el<HTMLInputElement>("count").value, "n");
+    if (n <= 0) throw new Error("n must be > 0");
+
+    for (let i = 0; i < TOTAL_INTERNAL_GENERATIONS; i += 1) {
+      fullRows.push(gen.next().value);
+    }
+
+    effectiveN = Math.min(n, TOTAL_INTERNAL_GENERATIONS);
+    requestedRows = fullRows.slice(0, effectiveN);
+    requestedN = n;
     el("hull-dobell").hidden = true;
     summarize(method, effectiveN, `Internas: ${TOTAL_INTERNAL_GENERATIONS}`);
   }
@@ -351,9 +423,9 @@ function generate() {
   currentViewState = {
     requestedRows,
     fullRows,
-    expanded: false,
+    expanded,
     histogramMode: "requested",
-    requestedN: n,
+    requestedN,
     effectiveN,
   };
   updateView();
