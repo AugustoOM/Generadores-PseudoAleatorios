@@ -136,7 +136,9 @@ function render(rows: PRNGOutput[]) {
     tdU.textContent = formatU(r.u);
 
     const tdAux = document.createElement("td");
-    tdAux.className = "num";
+    // Check if this is a regeneration message
+    const isRegeneration = r.aux && r.aux.includes("Debido a que la semilla 0");
+    tdAux.className = isRegeneration ? "regeneration" : "num";
     tdAux.textContent = r.aux ?? "-";
 
     const tdX = document.createElement("td");

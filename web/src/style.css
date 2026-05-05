@@ -515,6 +515,16 @@ button:disabled {
   text-align: right;
 }
 
+.table td.regeneration {
+  background: #fff5cf !important;
+  border-left: 4px solid var(--yellow);
+  font-weight: 900;
+  color: var(--blue);
+  text-align: left;
+  white-space: normal;
+  word-break: break-word;
+}
+
 .footer {
   display: flex;
   flex-wrap: wrap;
