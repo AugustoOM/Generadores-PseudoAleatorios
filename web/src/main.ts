@@ -176,27 +176,25 @@ function renderHistogram(rows: PRNGOutput[], mode: HistogramMode) {
     return;
   }
 
-  const counts = new Array<number>(HISTOGRAM_BINS).fill(0);
+  const counts = new Array<number>(10).fill(0);
   for (const row of rows) {
-    if (!Number.isFinite(row.u)) continue;
-    const idx = Math.min(HISTOGRAM_BINS - 1, Math.floor(row.u * HISTOGRAM_BINS));
-    counts[idx] += 1;
+    const lastDigit = Number(row.x.toString().slice(-1));
+    counts[lastDigit] += 1;
   }
 
   const maxCount = Math.max(...counts, 1);
-  counts.forEach((count, i) => {
+  counts.forEach((count, digit) => {
     const bucket = document.createElement("div");
     bucket.className = "histBucket";
 
     const bar = document.createElement("div");
     bar.className = "histBar";
-    bar.style.height = `${Math.max(8, Math.round((count / maxCount) * 100))}%`;
+    const heightPx = Math.max(8, Math.round((count / maxCount) * 150));
+    bar.style.height = `${heightPx}px`;
 
     const label = document.createElement("span");
     label.className = "histLabel";
-    const from = i / HISTOGRAM_BINS;
-    const to = (i + 1) / HISTOGRAM_BINS;
-    label.textContent = `${formatU(from)}-${formatU(to)}`;
+    label.textContent = String(digit);
 
     const value = document.createElement("span");
     value.className = "histValue";
@@ -207,7 +205,7 @@ function renderHistogram(rows: PRNGOutput[], mode: HistogramMode) {
   });
 
   const modeLabel = mode === "requested" ? "n solicitado" : "1000 iteraciones";
-  meta.textContent = `Mostrando frecuencia para ${rows.length} valores (${modeLabel}).`;
+  meta.textContent = `Distribución de últimos dígitos en ${rows.length} valores (${modeLabel}).`;
 }
 
 function updateView() {

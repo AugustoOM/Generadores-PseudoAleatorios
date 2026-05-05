@@ -503,21 +503,25 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 8px;
-  min-height: 180px;
-  align-items: end;
+  height: 170px;
+  align-items: flex-end;
 }
 
 .histBucket {
-  display: grid;
-  grid-template-rows: auto 1fr auto;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
-  align-items: end;
+  align-items: center;
+  height: 100%;
 }
 
 .histBar {
   min-height: 8px;
   border: 2px solid var(--line);
   background: linear-gradient(180deg, var(--yellow), #d49e1e);
+  width: 100%;
+  align-self: flex-start;
+  order: 2;
 }
 
 .histLabel,
@@ -529,11 +533,14 @@ button:disabled {
 
 .histLabel {
   font-size: 10px;
+  order: 3;
+  margin-bottom: auto;
 }
 
 .histValue {
   font-size: 11px;
   font-weight: 900;
+  order: 1;
 }
 
 .table {
