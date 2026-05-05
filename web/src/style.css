@@ -508,10 +508,11 @@ button:disabled {
 }
 
 .histBucket {
-  display: flex;
-  flex-direction: column-reverse;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
   gap: 6px;
-  align-items: center;
+  align-items: end;
+  justify-items: center;
   height: 100%;
 }
 
@@ -520,7 +521,8 @@ button:disabled {
   border: 2px solid var(--line);
   background: linear-gradient(180deg, var(--yellow), #d49e1e);
   width: 100%;
-  align-self: flex-end;
+  justify-self: stretch;
+  align-self: end;
 }
 
 .histLabel,
