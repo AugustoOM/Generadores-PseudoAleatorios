@@ -29,6 +29,23 @@ const methodDetails: Record<Method, { name: string; description: string }> = {
   },
 };
 
+const TOTAL_INTERNAL_GENERATIONS = 1000;
+const INITIAL_TABLE_LIMIT = 20;
+const HISTOGRAM_BINS = 10;
+
+type HistogramMode = "requested" | "full";
+
+type GenerationViewState = {
+  requestedRows: PRNGOutput[];
+  fullRows: PRNGOutput[];
+  expanded: boolean;
+  histogramMode: HistogramMode;
+  requestedN: number;
+  effectiveN: number;
+};
+
+let currentViewState: GenerationViewState | null = null;
+
 function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
   if (!node) throw new Error(`Missing element #${id}`);
@@ -119,7 +136,7 @@ function updateMethodVisibility(method: Method) {
   info.append(title, desc);
 }
 
-function render(rows: PRNGOutput[]) {
+function renderTable(rows: PRNGOutput[]) {
   const tbody = el<HTMLTableSectionElement>("tbody");
   tbody.innerHTML = "";
 
@@ -136,7 +153,6 @@ function render(rows: PRNGOutput[]) {
     tdU.textContent = formatU(r.u);
 
     const tdAux = document.createElement("td");
-    // Check if this is a regeneration message
     const isRegeneration = r.aux && r.aux.includes("Debido a que la semilla 0");
     tdAux.className = isRegeneration ? "regeneration" : "num";
     tdAux.textContent = r.aux ?? "-";
@@ -148,6 +164,75 @@ function render(rows: PRNGOutput[]) {
     tr.append(tdIdx, tdU, tdAux, tdX);
     tbody.append(tr);
   }
+}
+
+function renderHistogram(rows: PRNGOutput[], mode: HistogramMode) {
+  const host = el<HTMLDivElement>("hist-bars");
+  const meta = el<HTMLParagraphElement>("hist-meta");
+  host.innerHTML = "";
+
+  if (rows.length === 0) {
+    meta.textContent = "Sin datos";
+    return;
+  }
+
+  const counts = new Array<number>(HISTOGRAM_BINS).fill(0);
+  for (const row of rows) {
+    if (!Number.isFinite(row.u)) continue;
+    const idx = Math.min(HISTOGRAM_BINS - 1, Math.floor(row.u * HISTOGRAM_BINS));
+    counts[idx] += 1;
+  }
+
+  const maxCount = Math.max(...counts, 1);
+  counts.forEach((count, i) => {
+    const bucket = document.createElement("div");
+    bucket.className = "histBucket";
+
+    const bar = document.createElement("div");
+    bar.className = "histBar";
+    bar.style.height = `${Math.max(8, Math.round((count / maxCount) * 100))}%`;
+
+    const label = document.createElement("span");
+    label.className = "histLabel";
+    const from = i / HISTOGRAM_BINS;
+    const to = (i + 1) / HISTOGRAM_BINS;
+    label.textContent = `${formatU(from)}-${formatU(to)}`;
+
+    const value = document.createElement("span");
+    value.className = "histValue";
+    value.textContent = String(count);
+
+    bucket.append(value, bar, label);
+    host.append(bucket);
+  });
+
+  const modeLabel = mode === "requested" ? "n solicitado" : "1000 iteraciones";
+  meta.textContent = `Mostrando frecuencia para ${rows.length} valores (${modeLabel}).`;
+}
+
+function updateView() {
+  if (!currentViewState) return;
+
+  const { requestedRows, fullRows, expanded, requestedN, histogramMode } = currentViewState;
+  const visibleRows = expanded ? requestedRows : requestedRows.slice(0, INITIAL_TABLE_LIMIT);
+  renderTable(visibleRows);
+  renderStats(requestedRows);
+
+  const toggleTableBtn = el<HTMLButtonElement>("toggleTable");
+  const needsExpansion = requestedRows.length > INITIAL_TABLE_LIMIT;
+  toggleTableBtn.hidden = !needsExpansion;
+  if (needsExpansion) {
+    toggleTableBtn.textContent = expanded
+      ? `Ver primeras ${INITIAL_TABLE_LIMIT}`
+      : `Ver todas (${requestedRows.length})`;
+  }
+
+  const histogramRows = histogramMode === "requested" ? requestedRows : fullRows;
+  renderHistogram(histogramRows, histogramMode);
+  const toggleHistogramBtn = el<HTMLButtonElement>("toggleHistogram");
+  toggleHistogramBtn.textContent = histogramMode === "requested"
+    ? "Ver 1000 iteraciones"
+    : `Ver n (${requestedN})`;
 }
 
 function renderStats(rows: PRNGOutput[]) {
@@ -165,9 +250,12 @@ function renderStats(rows: PRNGOutput[]) {
 }
 
 function clearResults() {
-  render([]);
+  currentViewState = null;
+  renderTable([]);
   renderStats([]);
+  renderHistogram([], "requested");
   el<HTMLButtonElement>("copy").disabled = true;
+  el<HTMLButtonElement>("toggleTable").hidden = true;
 }
 
 function setError(message: string | null) {
@@ -221,29 +309,17 @@ function generate() {
   const method = getCurrentMethod();
   updateMethodVisibility(method);
 
-  const gen = buildGenerator(method);
-  const out: PRNGOutput[] = [];
+  const n = toIntStrict(el<HTMLInputElement>("count").value, "n");
+  if (n <= 0) throw new Error("n must be > 0");
 
-  if (method === "mixed") {
-    const m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
-    // Auto mode: Stop at first repeat for Mixed
-    const seen = new Set<bigint>();
-    for (let i = 0; i < Number(m) + 2; i++) {
-      const val = gen.next().value;
-      if (seen.has(val.x)) {
-        out.push(val);
-        break;
-      }
-      seen.add(val.x);
-      out.push(val);
-      if (out.length > 2000) break;
-    }
-  } else {
-    // Other methods use the 'count' field
-    const n = toIntStrict(el<HTMLInputElement>("count").value, "n");
-    if (n <= 0) throw new Error("n must be > 0");
-    for (let i = 0; i < n; i += 1) out.push(gen.next().value);
+  const gen = buildGenerator(method);
+  const fullRows: PRNGOutput[] = [];
+  for (let i = 0; i < TOTAL_INTERNAL_GENERATIONS; i += 1) {
+    fullRows.push(gen.next().value);
   }
+
+  const effectiveN = Math.min(n, TOTAL_INTERNAL_GENERATIONS);
+  const requestedRows = fullRows.slice(0, effectiveN);
 
   if (method === "mixed") {
     const a = toBigIntStrict(el<HTMLInputElement>("aMixed").value, "a");
@@ -267,26 +343,27 @@ function generate() {
     status.textContent = full ? "Cumple Hull-Dobell (Periodo Completo)" : "No cumple (Periodo Incompleto)";
     status.className = full ? "status-ok" : "status-fail";
 
-    let extra = full ? `Periodo esperado: ${m}` : "Periodo esperado: < m";
-    if (out.length > 0) {
-      const last = out[out.length - 1];
-      const repeatedIdx = out.findIndex((r, idx) => idx < out.length - 1 && r.x === last.x);
-      if (repeatedIdx !== -1) {
-        extra += ` | Repite X${repeatedIdx}`;
-      }
-    }
-    summarize(method, out.length, extra);
+    const extra = full ? `Periodo esperado: ${m}` : "Periodo esperado: < m";
+    summarize(method, effectiveN, `${extra} | Internas: ${TOTAL_INTERNAL_GENERATIONS}`);
   } else {
     el("hull-dobell").hidden = true;
-    summarize(method, out.length);
+    summarize(method, effectiveN, `Internas: ${TOTAL_INTERNAL_GENERATIONS}`);
   }
-  render(out);
-  renderStats(out);
+
+  currentViewState = {
+    requestedRows,
+    fullRows,
+    expanded: false,
+    histogramMode: "requested",
+    requestedN: n,
+    effectiveN,
+  };
+  updateView();
 
   const copyBtn = el<HTMLButtonElement>("copy");
-  copyBtn.disabled = out.length === 0;
+  copyBtn.disabled = requestedRows.length === 0;
   copyBtn.onclick = async () => {
-    const text = out.map((r) => formatU(r.u)).join("\n");
+    const text = requestedRows.map((r) => formatU(r.u)).join("\n");
     await navigator.clipboard.writeText(text);
     const previous = copyBtn.innerHTML;
     copyBtn.innerHTML = '<span aria-hidden="true">OK</span>Copiado';
@@ -306,6 +383,19 @@ function wire() {
   el<HTMLInputElement>("seed").addEventListener("input", () => {
     setWarning(getMiddleSquareZeroSeedWarning());
   });
+
+  el<HTMLButtonElement>("toggleTable").addEventListener("click", () => {
+    if (!currentViewState) return;
+    currentViewState.expanded = !currentViewState.expanded;
+    updateView();
+  });
+
+  el<HTMLButtonElement>("toggleHistogram").addEventListener("click", () => {
+    if (!currentViewState) return;
+    currentViewState.histogramMode = currentViewState.histogramMode === "requested" ? "full" : "requested";
+    updateView();
+  });
+
   updateMethodVisibility(getCurrentMethod());
 
   const runGenerate = () => {

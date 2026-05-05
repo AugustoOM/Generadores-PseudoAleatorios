@@ -463,9 +463,77 @@ button:disabled {
   overflow: hidden;
 }
 
+.tableTools {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 12px 0;
+}
+
 .output {
   max-height: 630px;
   overflow: auto;
+}
+
+.histogramModule {
+  padding: 14px;
+}
+
+.histTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.histTop h3 {
+  margin-bottom: 0;
+  font-size: 16px;
+  text-transform: uppercase;
+}
+
+.histMeta {
+  margin: 0 0 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.histBars {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 8px;
+  min-height: 180px;
+  align-items: end;
+}
+
+.histBucket {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 6px;
+  align-items: end;
+}
+
+.histBar {
+  min-height: 8px;
+  border: 2px solid var(--line);
+  background: linear-gradient(180deg, var(--yellow), #d49e1e);
+}
+
+.histLabel,
+.histValue {
+  display: block;
+  text-align: center;
+  font-family: var(--mono);
+}
+
+.histLabel {
+  font-size: 10px;
+}
+
+.histValue {
+  font-size: 11px;
+  font-weight: 900;
 }
 
 .table {
@@ -608,5 +676,13 @@ button:disabled {
 
   .output {
     max-height: 520px;
+  }
+
+  .histTop {
+    display: grid;
+  }
+
+  .histBars {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
