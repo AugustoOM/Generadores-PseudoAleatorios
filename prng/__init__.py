@@ -4,6 +4,7 @@ from .generators import (
     multiplicative_lcg,
     mixed_lcg,
     mixed_lcg_has_full_period,
+    middle_product,
 )
 
 __all__ = [
@@ -12,5 +13,6 @@ __all__ = [
     "multiplicative_lcg",
     "mixed_lcg",
     "mixed_lcg_has_full_period",
+    "middle_product",
 ]
 

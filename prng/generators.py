@@ -200,3 +200,45 @@ def mixed_lcg_has_full_period(a: int, c: int, m: int) -> bool:
 
     return True
 
+
+def _center_digits(value: int, d: int) -> int:
+    s = str(abs(value))
+    if len(s) > d:
+        start = (len(s) - d) // 2
+        s = s[start : start + d]
+    return int(s)
+
+
+def middle_product(seed1: int, seed2: int, *, d: int = 4) -> Iterator[float]:
+    """
+    Producto medio (Middle-product).
+
+    x_{n+1} = middle_d_digits(x_n * x_{n-1})
+
+    - seed1, seed2: semillas iniciales (x0, x1)
+    - d: cantidad de digitos del estado
+
+    Produce floats en [0, 1).
+    """
+    if d <= 0:
+        raise ValueError("d must be > 0")
+
+    mod = 10**d
+    x0 = _center_digits(seed1, d)
+    x1 = _center_digits(seed2, d)
+
+    yield x0 / mod
+    yield x1 / mod
+
+    while True:
+        prod = x0 * x1
+        s = str(abs(prod))
+        if len(s) <= d:
+            center = s
+        else:
+            start = (len(s) - d) // 2
+            center = s[start : start + d]
+        x2 = int(center)
+        yield x2 / mod
+        x0, x1 = x1, x2
+

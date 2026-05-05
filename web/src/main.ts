@@ -2,18 +2,23 @@ import "./style.css";
 import {
   laggedFibonacci,
   middleSquare,
+  middleProduct,
   multiplicativeLCG,
   mixedLCG,
   checkHullDobellDetailed,
   type PRNGOutput,
 } from "./prng";
 
-type Method = "middle-square" | "fibonacci" | "multiplicative" | "mixed";
+type Method = "middle-square" | "fibonacci" | "multiplicative" | "mixed" | "middle-product";
 
 const methodDetails: Record<Method, { name: string; description: string }> = {
   "middle-square": {
     name: "Cuadrados medios",
-    description: "Eleva la semilla al cuadrado y toma los digitos centrales.",
+    description: "Eleva la semilla al cuadrado y toma los dígitos centrales.",
+  },
+  "middle-product": {
+    name: "Producto medio (Bifurcado)",
+    description: "Multiplica los dos últimos valores y bifurca en dos caminos paralelos.",
   },
   fibonacci: {
     name: "Fibonacci retardado",
@@ -105,6 +110,7 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
     return middleSquare(seed, digits);
   }
 
+
   if (method === "fibonacci") {
     const seed = toBigIntStrict(el<HTMLInputElement>("seed").value, "seed");
     const seed2 = toBigIntStrict(el<HTMLInputElement>("seed2").value, "seed2");
@@ -114,6 +120,18 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
     return laggedFibonacci(seed, seed2, j, k, m);
   }
 
+  if (method === "middle-product") {
+    const x0Str = el<HTMLInputElement>("x0Prod").value;
+    const x1Str = el<HTMLInputElement>("x1Prod").value;
+    const x0 = toBigIntStrict(x0Str, "X0");
+    const x1 = toBigIntStrict(x1Str, "X1");
+    // Calculate D based on the string length of the inputs (as user entered them)
+    // or the string length of the resulting numbers. 
+    // User said "depende de la longitud de la semilla que se ingresa".
+    const d = Math.max(x0.toString().length, x1.toString().length);
+    return middleProduct(x0, x1, d);
+  }
+  
   if (method === "multiplicative") {
     const seed = toBigIntStrict(el<HTMLInputElement>("x0Lcg").value, "X0");
     const a = toBigIntStrict(el<HTMLInputElement>("aLcg").value, "a");
@@ -131,7 +149,7 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
 function updateMethodVisibility(method: Method) {
   setHidden(".method", true);
   if (method === "middle-square") setHidden(".method-middle-square", false);
-  if (method === "fibonacci") setHidden(".method-fibonacci", false);
+  if (method === "middle-product") setHidden(".method-middle-product", false);
   if (method === "multiplicative") setHidden(".method-multiplicative", false);
   if (method === "mixed") setHidden(".method-mixed", false);
 
@@ -144,9 +162,23 @@ function updateMethodVisibility(method: Method) {
   info.append(title, desc);
 }
 
-function renderTable(rows: PRNGOutput[]) {
+function renderTable(rows: any[], method: Method) {
   const tbody = el<HTMLTableSectionElement>("tbody");
   tbody.innerHTML = "";
+
+  const thAux = el("th-aux");
+  const thU = el("th-u");
+  const thX = el("th-x");
+
+  if (method === "middle-product") {
+    thU.textContent = "u1 | u2";
+    thAux.textContent = "Producto | Centro";
+    thX.textContent = "Val 1 | Val 2";
+  } else {
+    thU.textContent = "u in [0,1)";
+    thAux.textContent = "Cálculo";
+    thX.textContent = "X\u1D62";
+  }
 
   for (let i = 0; i < rows.length; i += 1) {
     const r = rows[i];
@@ -158,16 +190,29 @@ function renderTable(rows: PRNGOutput[]) {
 
     const tdU = document.createElement("td");
     tdU.className = "num";
-    tdU.textContent = formatU(r.u);
+    if (method === "middle-product") {
+      tdU.innerHTML = `${formatU(r.u1)}<br>${formatU(r.u2)}`;
+    } else {
+      tdU.textContent = formatU(r.u);
+    }
 
     const tdAux = document.createElement("td");
     const isRegeneration = r.aux && r.aux.includes("Debido a que la semilla 0");
     tdAux.className = isRegeneration ? "regeneration" : "num";
-    tdAux.textContent = r.aux ?? "-";
+    if (method === "middle-product") {
+      tdAux.style.fontSize = "0.85em";
+      tdAux.innerHTML = `P: ${r.productA} | ${r.productB}<br>C: ${r.centerA} | ${r.centerB}`;
+    } else {
+      tdAux.textContent = r.aux ?? "-";
+    }
 
     const tdX = document.createElement("td");
     tdX.className = "num";
-    tdX.textContent = r.x.toString();
+    if (method === "middle-product") {
+      tdX.innerHTML = `${r.val1Str} | ${r.val2Str}`;
+    } else {
+      tdX.textContent = r.x.toString();
+    }
 
     tr.append(tdIdx, tdU, tdAux, tdX);
     tbody.append(tr);
@@ -219,9 +264,9 @@ function renderHistogram(rows: PRNGOutput[], mode: HistogramMode) {
 function updateView() {
   if (!currentViewState) return;
 
-  const { requestedRows, fullRows, expanded, requestedN, histogramMode } = currentViewState;
+  const { requestedRows, fullRows, expanded, requestedN, histogramMode, method } = currentViewState;
   const visibleRows = expanded ? requestedRows : requestedRows.slice(0, INITIAL_TABLE_LIMIT);
-  renderTable(visibleRows);
+  renderTable(visibleRows, method);
   renderStats(requestedRows);
 
   const toggleTableBtn = el<HTMLButtonElement>("toggleTable");
@@ -427,6 +472,7 @@ function generate() {
     histogramMode: "requested",
     requestedN,
     effectiveN,
+    method,
   };
   updateView();
 

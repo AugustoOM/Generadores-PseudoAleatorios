@@ -36,10 +36,11 @@
               <label for="method">Metodo</label>
               <select id="method">
                 <option value="middle-square">Cuadrados medios</option>
-                <option value="fibonacci">Fibonacci retardado</option>
-                <option value="multiplicative">Multiplicativo (LCG)</option>
-                <option value="mixed">Mixto (LCG)</option>
-              </select>
+              <option value="middle-product">Producto Medio (Bifurcado)</option>
+              <option value="fibonacci">Fibonacci Retardado</option>
+              <option value="multiplicative">Multiplicativo (LCG)</option>
+              <option value="mixed">Mixto (LCG)</option>
+            </select>
             </div>
 
             <div id="methodInfo" class="note" aria-live="polite">
@@ -59,7 +60,7 @@
               </div>
             </div>
 
-            <div class="field method method-middle-square method-fibonacci">
+            <div class="field method method-middle-square method-middle-product method-fibonacci">
               <label for="count">Cantidad (n)</label>
               <input id="count" type="number" inputmode="numeric" min="1" value="10" />
             </div>
@@ -70,6 +71,20 @@
                 <input id="digits" type="number" inputmode="numeric" min="1" value="4" />
               </div>
               <p class="hint">Se extrae el bloque central despues de elevar cada estado al cuadrado.</p>
+            </div>
+
+            <div class="method method-middle-product">
+              <div class="equation">X<sub>i+1</sub> = middle(X<sub>i</sub> · X<sub>i-1</sub>)</div>
+              <div class="fieldPair">
+                <div class="field">
+                  <label for="x0Prod">X<sub>0</sub></label>
+                  <input id="x0Prod" type="number" inputmode="numeric" value="12" />
+                </div>
+                <div class="field">
+                  <label for="x1Prod">X<sub>1</sub></label>
+                  <input id="x1Prod" type="number" inputmode="numeric" value="34" />
+                </div>
+              </div>
             </div>
 
             <div class="method method-fibonacci">
@@ -180,9 +195,9 @@
                   <thead>
                     <tr>
                       <th>#</th>
-                      <th>u en [0,1)</th>
-                      <th>Calculo</th>
-                      <th>X<sub>i</sub></th>
+                      <th id="th-u">u en [0,1)</th>
+                      <th id="th-aux">Calculo</th>
+                      <th id="th-x">X<sub>i</sub></th>
                     </tr>
                   </thead>
                   <tbody id="tbody"></tbody>

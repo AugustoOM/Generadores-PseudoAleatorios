@@ -9,6 +9,7 @@ from prng.generators import (
     multiplicative_lcg,
     mixed_lcg,
     mixed_lcg_has_full_period,
+    middle_product,
 )
 
 
@@ -21,11 +22,11 @@ def _positive_int(value: str) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Generadores pseudoaleatorios: Cuadrados medios, Fibonacci, Multiplicativo, Mixto",
+        description="Generadores pseudoaleatorios: Cuadrados medios, Fibonacci, Multiplicativo, Mixto, Producto medio",
     )
     parser.add_argument(
         "--method",
-        choices=["middle-square", "fibonacci", "multiplicative", "mixed"],
+        choices=["middle-square", "fibonacci", "multiplicative", "mixed", "middle-product"],
         required=True,
         help="Método a usar",
     )
@@ -39,6 +40,7 @@ def main() -> int:
         default=6,
         help="(middle-square) dígitos totales (par): 6 -> R(n) de 3 dígitos",
     )
+    parser.add_argument("--d", type=_positive_int, default=4, help="(middle-product) cantidad de dígitos d")
     parser.add_argument("--j", type=_positive_int, default=24, help="(fibonacci) retardo j")
     parser.add_argument("--k", type=_positive_int, default=55, help="(fibonacci) retardo k")
     parser.add_argument("--m", type=_positive_int, default=2**31 - 1, help="(fibonacci/multiplicative/mixed) módulo")
@@ -58,6 +60,10 @@ def main() -> int:
         if args.seed2 is None:
             raise SystemExit("Para fibonacci debes indicar --seed2 (segunda semilla).")
         gen = lagged_fibonacci(args.seed, args.seed2, j=args.j, k=args.k, m=args.m)
+    elif args.method == "middle-product":
+        if args.seed2 is None:
+            raise SystemExit("Para middle-product debes indicar --seed2 (segunda semilla).")
+        gen = middle_product(args.seed, args.seed2, d=args.d)
     elif args.method == "multiplicative":
         gen = multiplicative_lcg(args.seed, a=args.a, m=args.m)
     else:

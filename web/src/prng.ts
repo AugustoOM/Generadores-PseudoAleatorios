@@ -10,6 +10,15 @@ function pow10Big(n: number): bigint {
   return r;
 }
 
+function centerDigits(value: bigint, d: number): bigint {
+  let s = (value < 0n ? -value : value).toString();
+  if (s.length > d) {
+    const start = Math.floor((s.length - d) / 2);
+    s = s.slice(start, start + d);
+  }
+  return BigInt(s);
+}
+
 export function* middleSquare(seed: bigint, d: number): Generator<PRNGOutput> {
   if (d <= 0) throw new Error("Dígitos a extraer debe ser > 0");
 
@@ -72,6 +81,54 @@ export function* middleSquare(seed: bigint, d: number): Generator<PRNGOutput> {
     x = BigInt(center);
     const u = Number(x) / Number(mod);
     yield { u, x, aux: `${left} | [${center}] | ${right} (${square})` };
+  }
+}
+
+export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generator<any> {
+  const mod = pow10Big(d);
+  let prev = seed1;
+  let curr = seed2;
+  
+  while (true) {
+    const prod = prev * curr;
+    let s = prod.toString();
+    if (s.length < 5) s = s.padStart(5, "0");
+    
+    let v1 = 0n;
+    let v2 = 0n;
+    let center = "";
+
+    if (s.length === 5) {
+      center = s.slice(1, 4);
+      v1 = BigInt(center);
+      v2 = 0n;
+    } else {
+      // 6 dígitos o más
+      const block = s.slice(1, 5);
+      center = block;
+      v1 = BigInt(block.slice(0, 3));
+      v2 = BigInt(block.slice(1, 4));
+    }
+
+    yield {
+      productA: s,
+      productB: "-",
+      centerA: center.padStart(4, "0"),
+      centerB: "-",
+      val1Str: v1.toString().padStart(3, "0"),
+      val2Str: v2.toString().padStart(3, "0"),
+      val1: v1,
+      val2: v2,
+      u1: Number(v1) / Number(mod),
+      u2: Number(v2) / Number(mod),
+      x: v1,
+      u: Number(v1) / Number(mod)
+    };
+
+    prev = curr;
+    curr = v1;
+
+    if (v1 === 0n) break;
   }
 }
 
