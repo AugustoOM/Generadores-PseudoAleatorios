@@ -503,13 +503,13 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 8px;
-  height: 170px;
+  height: 220px;
   align-items: flex-end;
 }
 
 .histBucket {
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   gap: 6px;
   align-items: center;
   height: 100%;
@@ -520,8 +520,7 @@ button:disabled {
   border: 2px solid var(--line);
   background: linear-gradient(180deg, var(--yellow), #d49e1e);
   width: 100%;
-  align-self: flex-start;
-  order: 2;
+  align-self: flex-end;
 }
 
 .histLabel,
@@ -532,15 +531,12 @@ button:disabled {
 }
 
 .histLabel {
-  font-size: 10px;
-  order: 3;
-  margin-bottom: auto;
+  font-size: 12px;
 }
 
 .histValue {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
-  order: 1;
 }
 
 .table {
