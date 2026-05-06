@@ -93,26 +93,19 @@ export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generat
     const prod = prev * curr;
     let s = prod.toString();
     const lMin = 2 * d - 1;
-    const lMax = 2 * d;
     
-    // Solo completar con ceros si es menor al mínimo académico (2D-1)
+    // Padding mínimo para asegurar que tengamos al menos 2D-1 dígitos
     if (s.length < lMin) s = s.padStart(lMin, "0");
     
-    let v1 = 0n;
-    let v2 = 0n;
-    let center = "";
-
-    if (s.length === lMin) {
-      // Caso 2D-1 (ej: 5 dígitos para D=3) -> Tomamos D dígitos desde índice 1
-      center = s.slice(1, d + 1);
-      v1 = BigInt(center);
-      v2 = 0n;
-    } else {
-      // Caso 2D o más (ej: 6 dígitos para D=3) -> Tomamos D+1 dígitos desde índice 1
-      center = s.slice(1, d + 2);
-      v1 = BigInt(center.slice(0, d));
-      v2 = BigInt(center.slice(1, d + 1));
-    }
+    // El índice de inicio exacto para extraer D dígitos
+    const start = Math.floor((s.length - d) / 2);
+    
+    // Extraemos EXACTAMENTE D dígitos, tal como pediste
+    const center = s.slice(start, start + d);
+    
+    // El valor generado es el centro. Val 2 se anula.
+    const v1 = BigInt(center);
+    const v2 = 0n;
 
     yield {
       productA: s,
