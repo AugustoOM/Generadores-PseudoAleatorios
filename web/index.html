@@ -215,6 +215,24 @@
               </div>
               <p id="hist-meta" class="histMeta">Sin datos</p>
               <div id="hist-bars" class="histBars" aria-live="polite"></div>
+
+              <div id="chi-square" class="chiSquare" hidden>
+                <div class="chiTop">
+                  <h4>Prueba Chi-Cuadrado (&chi;<sup>2</sup>)</h4>
+                  <span id="chi-status" class="tag">?</span>
+                </div>
+                <div class="chiStats">
+                  <div class="chiStat">
+                    <span>&chi;<sup>2</sup> Calculado</span>
+                    <strong id="chi-val">-</strong>
+                  </div>
+                  <div class="chiStat">
+                    <span>&chi;<sup>2</sup> Tabla (&alpha;=0.05)</span>
+                    <strong id="chi-crit">16.919</strong>
+                  </div>
+                </div>
+                <p id="chi-msg" class="chiMsg"></p>
+              </div>
             </div>
           </section>
         </main>

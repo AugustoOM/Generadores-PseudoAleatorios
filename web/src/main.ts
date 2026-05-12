@@ -225,17 +225,25 @@ function renderHistogram(rows: PRNGOutput[], mode: HistogramMode) {
 
   if (rows.length === 0) {
     meta.textContent = "Sin datos";
+    el("chi-square").hidden = true;
     return;
   }
 
-  const counts = new Array<number>(10).fill(0);
+  // 1. Calcular frecuencias por intervalos (Chi-Cuadrado)
+  const K = 10;
+  const n = rows.length;
+  const counts = new Array<number>(K).fill(0);
+  
   for (const row of rows) {
-    const lastDigit = Number(row.x.toString().slice(-1));
-    counts[lastDigit] += 1;
+    let bin = Math.floor(row.u * K);
+    if (bin >= K) bin = K - 1;
+    if (bin < 0) bin = 0;
+    counts[bin]++;
   }
 
+  // 2. Renderizar Barras
   const maxCount = Math.max(...counts, 1);
-  counts.forEach((count, digit) => {
+  counts.forEach((count, bin) => {
     const bucket = document.createElement("div");
     bucket.className = "histBucket";
 
@@ -246,7 +254,7 @@ function renderHistogram(rows: PRNGOutput[], mode: HistogramMode) {
 
     const label = document.createElement("span");
     label.className = "histLabel";
-    label.textContent = String(digit);
+    label.textContent = `${(bin/K).toFixed(1)}`;
 
     const value = document.createElement("span");
     value.className = "histValue";
@@ -257,7 +265,30 @@ function renderHistogram(rows: PRNGOutput[], mode: HistogramMode) {
   });
 
   const modeLabel = mode === "requested" ? "n solicitado" : "1000 iteraciones";
-  meta.textContent = `Distribución de últimos dígitos en ${rows.length} valores (${modeLabel}).`;
+  meta.textContent = `Distribución de valores u en 10 intervalos (${modeLabel}).`;
+
+  // 3. Prueba Chi-Cuadrado
+  const expected = n / K;
+  let chi2 = 0;
+  for (let i = 0; i < K; i++) {
+    chi2 += Math.pow(counts[i] - expected, 2) / expected;
+  }
+
+  const critical = 16.919; // Para k-1 = 9 y alfa = 0.05
+  const passed = chi2 <= critical;
+
+  el("chi-square").hidden = false;
+  el("chi-val").textContent = chi2.toFixed(4);
+  
+  const status = el("chi-status");
+  status.textContent = passed ? "CUMPLE" : "NO CUMPLE";
+  status.style.background = passed ? "var(--green)" : "var(--red)";
+  
+  const msg = el("chi-msg");
+  msg.textContent = passed 
+    ? "La distribución parece uniforme (no se rechaza H0)." 
+    : "La distribución no es uniforme (se rechaza H0).";
+  msg.style.color = passed ? "var(--green)" : "var(--red)";
 }
 
 function updateView() {

@@ -541,6 +541,60 @@ button:disabled {
   font-weight: 900;
 }
 
+.chiSquare {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 2px dashed var(--line);
+}
+
+.chiTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.chiTop h4 {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+.chiStats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.chiStat {
+  padding: 10px;
+  border: 2px solid var(--line);
+  background: #fffdf4;
+}
+
+.chiStat span {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.chiStat strong {
+  display: block;
+  font-family: var(--mono);
+  font-size: 18px;
+}
+
+.chiMsg {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
