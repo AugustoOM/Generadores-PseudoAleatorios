@@ -50,25 +50,25 @@
 
             <div class="field method method-middle-square method-fibonacci">
               <label for="seed">Semilla</label>
-              <input id="seed" type="number" inputmode="numeric" value="12345" />
+              <input id="seed" type="text" value="12345" />
             </div>
 
             <div class="method method-fibonacci">
               <div class="field">
                 <label for="seed2">Semilla 2</label>
-                <input id="seed2" type="number" inputmode="numeric" value="67890" />
+                <input id="seed2" type="text" value="67890" />
               </div>
             </div>
 
             <div class="field method method-middle-square method-middle-product method-fibonacci">
               <label for="count">Cantidad (n)</label>
-              <input id="count" type="number" inputmode="numeric" min="1" value="10" />
+              <input id="count" type="text" value="10" />
             </div>
 
             <div class="method method-middle-square">
               <div class="field">
                 <label for="digits">Digitos centrales</label>
-                <input id="digits" type="number" inputmode="numeric" min="1" value="4" />
+                <input id="digits" type="text" value="4" />
               </div>
               <p class="hint">Se extrae el bloque central despues de elevar cada estado al cuadrado.</p>
             </div>
@@ -78,11 +78,11 @@
               <div class="fieldPair">
                 <div class="field">
                   <label for="x0Prod">X<sub>0</sub></label>
-                  <input id="x0Prod" type="number" inputmode="numeric" value="12" />
+                  <input id="x0Prod" type="text" value="12" />
                 </div>
                 <div class="field">
                   <label for="x1Prod">X<sub>1</sub></label>
-                  <input id="x1Prod" type="number" inputmode="numeric" value="34" />
+                  <input id="x1Prod" type="text" value="34" />
                 </div>
               </div>
             </div>
@@ -92,16 +92,16 @@
               <div class="fieldPair">
                 <div class="field">
                   <label for="j">Retardo j</label>
-                  <input id="j" type="number" inputmode="numeric" min="1" value="24" />
+                  <input id="j" type="text" value="24" />
                 </div>
                 <div class="field">
                   <label for="k">Retardo k</label>
-                  <input id="k" type="number" inputmode="numeric" min="2" value="55" />
+                  <input id="k" type="text" value="55" />
                 </div>
               </div>
               <div class="field">
                 <label for="mFib">Modulo m</label>
-                <input id="mFib" type="number" inputmode="numeric" min="2" value="2147483647" />
+                <input id="mFib" type="text" value="2147483647" />
               </div>
             </div>
 
@@ -109,7 +109,7 @@
               <div class="equation">X<sub>i+1</sub> = (a &middot; X<sub>i</sub>) mod m</div>
               <div class="field">
                 <label for="x0Lcg">X<sub>0</sub></label>
-                <input id="x0Lcg" type="number" inputmode="numeric" value="12345" />
+                <input id="x0Lcg" type="text" value="12345" />
               </div>
               <div class="field">
                 <label for="aLcg">Multiplicador a</label>
@@ -125,21 +125,21 @@
               <div class="equation">X<sub>i+1</sub> = (a &middot; X<sub>i</sub> + c) mod m</div>
               <div class="field">
                 <label for="x0Mixed">X<sub>0</sub></label>
-                <input id="x0Mixed" type="number" inputmode="numeric" value="15" />
+                <input id="x0Mixed" type="text" value="15" />
               </div>
               <div class="fieldPair">
                 <div class="field">
                   <label for="aMixed">Multiplicador a</label>
-                  <input id="aMixed" type="number" inputmode="numeric" min="1" value="8" />
+                  <input id="aMixed" type="text" value="8" />
                 </div>
                 <div class="field">
                   <label for="cMixed">Incremento c</label>
-                  <input id="cMixed" type="number" inputmode="numeric" value="16" />
+                  <input id="cMixed" type="text" value="16" />
                 </div>
               </div>
               <div class="field">
                 <label for="mMixed">Modulo m</label>
-                <input id="mMixed" type="number" inputmode="numeric" min="2" value="100" />
+                <input id="mMixed" type="text" value="100" />
               </div>
 
               <div id="hull-dobell" class="checklist" hidden>

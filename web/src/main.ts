@@ -93,9 +93,8 @@ function toBigIntStrict(value: string, name: string): bigint {
 }
 
 function toIntStrict(value: string, name: string): number {
-  const n = Number(value);
-  if (!Number.isFinite(n) || !Number.isInteger(n)) throw new Error(`${name} must be an integer`);
-  return n;
+  const bi = toBigIntStrict(value, name);
+  return Number(bi);
 }
 
 function formatU(u: number): string {
@@ -148,6 +147,7 @@ function updateMethodVisibility(method: Method) {
   setHidden(".method", true);
   if (method === "middle-square") setHidden(".method-middle-square", false);
   if (method === "middle-product") setHidden(".method-middle-product", false);
+  if (method === "fibonacci") setHidden(".method-fibonacci", false);
   if (method === "multiplicative") setHidden(".method-multiplicative", false);
   if (method === "mixed") setHidden(".method-mixed", false);
 

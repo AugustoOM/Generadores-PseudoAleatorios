@@ -163,22 +163,32 @@ export function* laggedFibonacci(
 }
 
 export function* multiplicativeLCG(seed: bigint, a: bigint, m: bigint): Generator<PRNGOutput> {
-  if (m <= 1n) throw new Error("m must be > 1");
-  if (a <= 0n || a >= m) throw new Error("a must satisfy 0 < a < m");
+  if (m <= 1n) throw new Error("El módulo m debe ser > 1");
+  
+  let aEff = a % m;
+  if (aEff < 0n) aEff += m;
+  if (aEff === 0n) throw new Error("El multiplicador a no puede ser múltiplo del módulo m");
 
   let x = seed % m;
+  if (x < 0n) x += m;
   if (x === 0n) x = 1n;
 
+  // Yield X0 first
+  yield { u: Number(x) / Number(m), x, aux: "Semilla" };
+
   while (true) {
-    const nextX = (a * x) % m;
-    yield { u: Number(nextX) / Number(m), x: nextX, aux: `${a} * ${x}` };
+    const nextX = (aEff * x) % m;
+    yield { u: Number(nextX) / Number(m), x: nextX, aux: `${aEff} · ${x}` };
     x = nextX;
   }
 }
 
 export function* mixedLCG(seed: bigint, a: bigint, c: bigint, m: bigint): Generator<PRNGOutput> {
-  if (m <= 1n) throw new Error("m must be > 1");
-  if (a <= 0n || a >= m) throw new Error("a must satisfy 0 < a < m");
+  if (m <= 1n) throw new Error("El módulo m debe ser > 1");
+
+  let aEff = a % m;
+  if (aEff < 0n) aEff += m;
+  if (aEff === 0n) throw new Error("El multiplicador a no puede ser múltiplo del módulo m");
 
   let inc = c % m;
   if (inc < 0n) inc += m;
@@ -190,8 +200,8 @@ export function* mixedLCG(seed: bigint, a: bigint, c: bigint, m: bigint): Genera
   yield { u: Number(x) / Number(m), x, aux: "Semilla" };
 
   while (true) {
-    const nextX = (a * x + inc) % m;
-    yield { u: Number(nextX) / Number(m), x: nextX, aux: `(${a} * ${x} + ${inc})` };
+    const nextX = (aEff * x + inc) % m;
+    yield { u: Number(nextX) / Number(m), x: nextX, aux: `(${aEff} · ${x} + ${inc})` };
     x = nextX;
   }
 }
