@@ -92,25 +92,36 @@ export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generat
   while (true) {
     const prod = prev * curr;
     let s = prod.toString();
-    const lMin = 2 * d - 1;
     
-    // Padding mínimo para asegurar que tengamos al menos 2D-1 dígitos
-    if (s.length < lMin) s = s.padStart(lMin, "0");
+    // Nueva lógica basada en la paridad de la longitud del producto (L)
+    // N = L - (D - 1) es la cantidad de dígitos a extraer del centro.
+    const l = s.length;
+    const n = l - (d - 1);
     
-    // El índice de inicio exacto para extraer D dígitos
-    const start = Math.floor((s.length - d) / 2);
-    
-    // Extraemos EXACTAMENTE D dígitos, tal como pediste
-    const center = s.slice(start, start + d);
-    
-    // El valor generado es el centro. Val 2 se anula.
-    const v1 = BigInt(center);
-    const v2 = 0n;
+    let v1: bigint = 0n;
+    let v2: bigint = 0n;
+    let centerText = "-";
+
+    if (n > 0) {
+      const start = Math.floor((l - n) / 2);
+      centerText = s.slice(start, start + n);
+      
+      if (n <= d) {
+        // Un solo valor (Val 1)
+        v1 = BigInt(centerText);
+        v2 = 0n;
+      } else {
+        // Dos valores (Val 1 y Val 2 solapados)
+        // Val 1: primeros D dígitos. Val 2: últimos D dígitos.
+        v1 = BigInt(centerText.slice(0, d));
+        v2 = BigInt(centerText.slice(n - d, n));
+      }
+    }
 
     yield {
       productA: s,
       productB: "-",
-      centerA: center,
+      centerA: centerText,
       centerB: "-",
       val1Str: v1.toString().padStart(d, "0"),
       val2Str: v2.toString().padStart(d, "0"),
@@ -118,7 +129,7 @@ export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generat
       val2: v2,
       u1: Number(v1) / Number(mod),
       u2: Number(v2) / Number(mod),
-      x: v1,
+      x: v1, // Seguimos la secuencia por Val 1
       u: Number(v1) / Number(mod),
       d: d
     };
@@ -126,7 +137,7 @@ export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generat
     prev = curr;
     curr = v1;
 
-    if (v1 === 0n) break;
+    if (v1 === 0n && v2 === 0n) break;
   }
 }
 
