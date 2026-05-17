@@ -59,6 +59,40 @@ type PeriodResult = {
   limit: number;
 };
 
+function getTTableValue(df: number): number {
+  if (df <= 0) return NaN;
+  // Two-tailed t-table values for alpha = 0.05
+  const tTable: Record<number, number> = {
+    1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 
+    6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
+    11: 2.201, 12: 2.179, 13: 2.160, 14: 2.145, 15: 2.131,
+    16: 2.120, 17: 2.110, 18: 2.101, 19: 2.093, 20: 2.086,
+    21: 2.080, 22: 2.074, 23: 2.069, 24: 2.064, 25: 2.060,
+    26: 2.056, 27: 2.052, 28: 2.048, 29: 2.045, 30: 2.042,
+    40: 2.021, 60: 2.000, 80: 1.990, 100: 1.984, 120: 1.980
+  };
+
+  if (tTable[df]) return tTable[df];
+  
+  if (df < 30) {
+    let lower = 1;
+    for (const k in tTable) {
+      if (Number(k) < df) lower = Number(k);
+    }
+    return tTable[lower];
+  }
+
+  if (df > 120) return 1.960;
+
+  if (df > 100) return 1.984 - ((df - 100) / 20) * (1.984 - 1.980);
+  if (df > 80) return 1.990 - ((df - 80) / 20) * (1.990 - 1.984);
+  if (df > 60) return 2.000 - ((df - 60) / 20) * (2.000 - 1.990);
+  if (df > 40) return 2.021 - ((df - 40) / 20) * (2.021 - 2.000);
+  if (df > 30) return 2.042 - ((df - 30) / 10) * (2.042 - 2.021);
+
+  return 1.960;
+}
+
 function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
   if (!node) throw new Error(`Missing element #${id}`);
@@ -315,6 +349,115 @@ function renderHistogram(rows: PRNGOutput[], mode: HistogramMode) {
   msg.style.color = passed ? "var(--green)" : "var(--red)";
 }
 
+function renderTTest(rows: PRNGOutput[]) {
+  const container = el<HTMLDivElement>("t-test-container");
+  const meta = el<HTMLParagraphElement>("t-test-meta");
+  const tbody = el<HTMLTableSectionElement>("t-test-tbody");
+  tbody.innerHTML = "";
+  
+  const n = rows.length;
+  if (n <= 3) {
+    container.hidden = true;
+    meta.hidden = false;
+    return;
+  }
+
+  container.hidden = false;
+  meta.hidden = true;
+
+  const lags = [1, 2, 3];
+  
+  for (const h of lags) {
+    if (n - h <= 0) continue;
+
+    let sum = 0;
+    for (let i = 0; i < n - h; i++) {
+      sum += rows[i].u * rows[i + h].u;
+    }
+
+    const rho = ( (1 / (n - h)) * sum - 0.25 ) / (1 / 12);
+    
+    const df = n - h - 2;
+    if (df <= 0) continue;
+    
+    const denominator = Math.sqrt(Math.max(0, 1 - rho * rho));
+    let tCalc = 0;
+    if (denominator > 0) {
+      tCalc = (rho * Math.sqrt(df)) / denominator;
+    } else {
+      tCalc = Infinity;
+    }
+    
+    const tTabla = getTTableValue(df);
+    const passed = Math.abs(tCalc) < tTabla;
+
+    const tr = document.createElement("tr");
+    
+    const tdH = document.createElement("td");
+    tdH.className = "num";
+    tdH.textContent = String(h);
+
+    const tdRho = document.createElement("td");
+    tdRho.className = "num";
+    tdRho.textContent = rho.toFixed(4);
+
+    const tdTCalc = document.createElement("td");
+    tdTCalc.className = "num";
+    tdTCalc.textContent = tCalc === Infinity ? "Inf" : Math.abs(tCalc).toFixed(4);
+
+    const tdTTabla = document.createElement("td");
+    tdTTabla.className = "num";
+    tdTTabla.textContent = tTabla.toFixed(4);
+
+    const tdDec = document.createElement("td");
+    if (passed) {
+      tdDec.innerHTML = `<span class="tag" style="background:var(--green);margin:0;">Acepta H0</span>`;
+    } else {
+      tdDec.innerHTML = `<span class="tag" style="background:var(--red);margin:0;">Rechaza H0</span>`;
+    }
+
+    tr.append(tdH, tdRho, tdTCalc, tdTTabla, tdDec);
+    tbody.append(tr);
+  }
+
+  renderScatterPlot(rows);
+}
+
+function renderScatterPlot(rows: PRNGOutput[]) {
+  const canvas = el<HTMLCanvasElement>("scatter-plot");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const w = canvas.width;
+  const h = canvas.height;
+  
+  ctx.clearRect(0, 0, w, h);
+  
+  ctx.strokeStyle = "rgba(29, 26, 22, 0.1)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 1; i < 10; i++) {
+    ctx.moveTo(0, i * h / 10); ctx.lineTo(w, i * h / 10);
+    ctx.moveTo(i * w / 10, 0); ctx.lineTo(i * w / 10, h);
+  }
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(32, 95, 143, 0.6)";
+  
+  const n = rows.length;
+  for (let i = 0; i < n - 1; i++) {
+    const ux = rows[i].u;
+    const uy = rows[i + 1].u;
+    
+    const px = ux * w;
+    const py = (1 - uy) * h;
+    
+    ctx.beginPath();
+    ctx.arc(px, py, 2.5, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+}
+
 function updateView() {
   if (!currentViewState) return;
 
@@ -334,6 +477,7 @@ function updateView() {
 
   const histogramRows = histogramMode === "requested" ? requestedRows : fullRows;
   renderHistogram(histogramRows, histogramMode);
+  renderTTest(histogramRows);
   const toggleHistogramBtn = el<HTMLButtonElement>("toggleHistogram");
   toggleHistogramBtn.hidden = fullRows.length === requestedRows.length;
   toggleHistogramBtn.textContent = histogramMode === "requested"
@@ -357,9 +501,10 @@ function renderStats(rows: PRNGOutput[]) {
 
 function clearResults() {
   currentViewState = null;
-  renderTable([]);
+  renderTable([], "multiplicative");
   renderStats([]);
   renderHistogram([], "requested");
+  renderTTest([]);
   el<HTMLButtonElement>("copy").disabled = true;
   el<HTMLButtonElement>("toggleTable").hidden = true;
 }
@@ -576,6 +721,18 @@ function wire() {
   });
   el<HTMLInputElement>("seed").addEventListener("input", () => {
     setWarning(getMiddleSquareZeroSeedWarning());
+  });
+
+  const tabBtns = document.querySelectorAll<HTMLButtonElement>(".tab-btn");
+  tabBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(c => (c as HTMLElement).hidden = true);
+      
+      btn.classList.add("active");
+      const targetId = btn.getAttribute("data-target");
+      if (targetId) el<HTMLElement>(targetId).hidden = false;
+    });
   });
 
   el<HTMLButtonElement>("toggleTable").addEventListener("click", () => {

@@ -746,6 +746,63 @@ button:disabled {
   }
 }
 
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 2px solid var(--line);
+  padding-bottom: 8px;
+}
+.tab-btn {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 2px solid var(--line);
+  background: var(--paper-2);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: none;
+  transform: none;
+}
+.tab-btn:hover {
+  background: #fffdf4;
+  transform: none;
+  box-shadow: none;
+}
+.tab-btn.active {
+  background: var(--ink);
+  color: var(--yellow);
+  border-color: var(--ink);
+}
+
+/* Test t Visuals */
+.tTableWrapper {
+  margin-bottom: 20px;
+}
+.scatterWrapper {
+  border: 2px dashed var(--line);
+  padding: 14px;
+  background: #fffdf4;
+  text-align: center;
+}
+.scatterWrapper h4 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-family: var(--mono);
+  font-size: 14px;
+  text-transform: uppercase;
+}
+canvas#scatter-plot {
+  border: 2px solid var(--line);
+  background: #f7f1df;
+  max-width: 100%;
+  height: auto;
+}
+
 /* Repetition Highlighting */
 .table tbody tr.row-repeat-source td {
   background: #e0f0fa !important;

@@ -209,29 +209,61 @@
               <div class="histTop">
                 <div>
                   <span class="tag">Analitica</span>
-                  <h3 id="hist-title">Histograma de frecuencia</h3>
+                  <h3 id="hist-title">Pruebas Estadísticas</h3>
                 </div>
                 <button id="toggleHistogram" class="copy" type="button">Ver 1000 iteraciones</button>
               </div>
-              <p id="hist-meta" class="histMeta">Sin datos</p>
-              <div id="hist-bars" class="histBars" aria-live="polite"></div>
+              
+              <div class="tabs">
+                <button class="tab-btn active" data-target="tab-chi">Uniformidad (Chi-Cuadrado)</button>
+                <button class="tab-btn" data-target="tab-t">Independencia (Test t)</button>
+              </div>
 
-              <div id="chi-square" class="chiSquare" hidden>
-                <div class="chiTop">
-                  <h4>Prueba Chi-Cuadrado (&chi;<sup>2</sup>)</h4>
-                  <span id="chi-status" class="tag">?</span>
-                </div>
-                <div class="chiStats">
-                  <div class="chiStat">
-                    <span>&chi;<sup>2</sup> Calculado</span>
-                    <strong id="chi-val">-</strong>
+              <div id="tab-chi" class="tab-content active">
+                <p id="hist-meta" class="histMeta">Sin datos</p>
+                <div id="hist-bars" class="histBars" aria-live="polite"></div>
+
+                <div id="chi-square" class="chiSquare" hidden>
+                  <div class="chiTop">
+                    <h4>Prueba Chi-Cuadrado (&chi;<sup>2</sup>)</h4>
+                    <span id="chi-status" class="tag">?</span>
                   </div>
-                  <div class="chiStat">
-                    <span>&chi;<sup>2</sup> Tabla (&alpha;=0.05)</span>
-                    <strong id="chi-crit">16.919</strong>
+                  <div class="chiStats">
+                    <div class="chiStat">
+                      <span>&chi;<sup>2</sup> Calculado</span>
+                      <strong id="chi-val">-</strong>
+                    </div>
+                    <div class="chiStat">
+                      <span>&chi;<sup>2</sup> Tabla (&alpha;=0.05)</span>
+                      <strong id="chi-crit">16.919</strong>
+                    </div>
+                  </div>
+                  <p id="chi-msg" class="chiMsg"></p>
+                </div>
+              </div>
+
+              <div id="tab-t" class="tab-content" hidden>
+                <div id="t-test-container" hidden>
+                  <div class="tTableWrapper">
+                    <table class="table" aria-label="Resultados del Test t">
+                      <thead>
+                        <tr>
+                          <th>h</th>
+                          <th>&rho;</th>
+                          <th>t Calc.</th>
+                          <th>t Tabla</th>
+                          <th>Decisión (H0)</th>
+                        </tr>
+                      </thead>
+                      <tbody id="t-test-tbody"></tbody>
+                    </table>
+                  </div>
+                  <div class="scatterWrapper">
+                    <h4>Gráfico de Dispersión (h=1)</h4>
+                    <canvas id="scatter-plot" width="400" height="400"></canvas>
                   </div>
                 </div>
-                <p id="chi-msg" class="chiMsg"></p>
+                <p id="t-test-meta" class="histMeta">Sin datos suficientes para evaluar (se requieren n > 3)</p>
               </div>
             </div>
           </section>
