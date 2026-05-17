@@ -745,3 +745,41 @@ button:disabled {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
+
+/* Repetition Highlighting */
+.table tbody tr.row-repeat-source td {
+  background: #e0f0fa !important;
+  font-weight: bold;
+}
+.table tbody tr.row-repeat-source td:first-child {
+  box-shadow: inset 4px 0 0 var(--blue);
+}
+
+.table tbody tr.row-repeat-target td {
+  background: #fae0e0 !important;
+  font-weight: bold;
+  color: var(--red);
+}
+.table tbody tr.row-repeat-target td:first-child {
+  box-shadow: inset 4px 0 0 var(--red);
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 4px;
+  font-size: 10px;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  border: 1px solid var(--line);
+  margin-top: 4px;
+}
+.badge-red {
+  background: #ffcccc;
+  color: var(--red);
+  border-color: var(--red);
+}
+.badge-blue {
+  background: #cce5ff;
+  color: var(--blue);
+  border-color: var(--blue);
+}

@@ -104,7 +104,11 @@ function formatU(u: number): string {
 
 function buildGenerator(method: Method): Generator<PRNGOutput> {
   if (method === "middle-square") {
-    const seed = toBigIntStrict(el<HTMLInputElement>("seed").value, "seed");
+    const seedInput = el<HTMLInputElement>("seed").value.trim();
+    if (seedInput.length !== 6) {
+      throw new Error("La semilla debe tener exactamente 6 dígitos para el método de cuadrados medios.");
+    }
+    const seed = toBigIntStrict(seedInput, "seed");
     const digits = toIntStrict(el<HTMLInputElement>("digits").value, "digits");
     return middleSquare(seed, digits);
   }
@@ -178,14 +182,34 @@ function renderTable(rows: any[], method: Method) {
     thX.textContent = "X\u1D62";
   }
 
+  const sourceOfRepeat = new Set<number>();
+  for (const r of rows) {
+    if (r?.repeatOf !== undefined) {
+      sourceOfRepeat.add(r.repeatOf);
+    }
+  }
+
   for (let i = 0; i < rows.length; i += 1) {
     const r = rows[i];
     if (!r) continue;
     const tr = document.createElement("tr");
 
+    if (r.repeatOf !== undefined) {
+      tr.classList.add("row-repeat-target");
+    }
+    if (sourceOfRepeat.has(i)) {
+      tr.classList.add("row-repeat-source");
+    }
+
     const tdIdx = document.createElement("td");
     tdIdx.className = "num";
-    tdIdx.textContent = String(i);
+    if (r.repeatOf !== undefined) {
+      tdIdx.innerHTML = `${i} <br><span class="badge badge-red">Repite #${r.repeatOf}</span>`;
+    } else if (sourceOfRepeat.has(i)) {
+      tdIdx.innerHTML = `${i} <br><span class="badge badge-blue">Origen</span>`;
+    } else {
+      tdIdx.textContent = String(i);
+    }
 
     const tdU = document.createElement("td");
     tdU.className = "num";
@@ -382,18 +406,21 @@ function summarize(method: Method, n: number, extra?: string) {
 }
 
 function generateUntilRepeat(gen: Generator<PRNGOutput>, limit: number): PeriodResult {
-  const seen = new Map<bigint, number>();
+  const seen = new Map<string, number>();
   const rows: PRNGOutput[] = [];
   let period: number | null = null;
   const maxSteps = limit + 1;
 
   for (let i = 0; i < maxSteps; i += 1) {
     const val = gen.next().value;
-    if (seen.has(val.x)) {
-      period = i - (seen.get(val.x) ?? i);
+    const key = val.stateKey ?? val.x.toString();
+    if (seen.has(key)) {
+      val.repeatOf = seen.get(key);
+      period = i - (seen.get(key) ?? i);
+      if (rows.length < limit) rows.push(val);
       break;
     }
-    seen.set(val.x, i);
+    seen.set(key, i);
     if (rows.length < limit) rows.push(val);
   }
 
@@ -422,10 +449,15 @@ function generate() {
   let effectiveN = 0;
   let expanded = false;
 
-  if (method === "mixed" || method === "multiplicative") {
-    const m = method === "mixed"
-      ? toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m")
-      : toBigIntStrict(el<HTMLInputElement>("mLcgInput").value, "m");
+  if (method === "mixed" || method === "multiplicative" || method === "fibonacci") {
+    let m: bigint;
+    if (method === "mixed") {
+      m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
+    } else if (method === "multiplicative") {
+      m = toBigIntStrict(el<HTMLInputElement>("mLcgInput").value, "m");
+    } else {
+      m = toBigIntStrict(el<HTMLInputElement>("mFib").value, "m");
+    }
 
     let full = false;
     if (method === "mixed") {
@@ -454,12 +486,19 @@ function generate() {
 
     const maxPeriod = method === "mixed"
       ? (full ? m : m)
-      : m - 1n;
+      : (method === "fibonacci" ? m : m - 1n);
     const limit = maxPeriod > BigInt(MAX_PERIOD_OUTPUT) ? MAX_PERIOD_OUTPUT : Number(maxPeriod);
 
     const periodResult = generateUntilRepeat(gen, limit);
-    fullRows = periodResult.rows;
     requestedRows = periodResult.rows;
+
+    fullRows = [...periodResult.rows];
+    while (fullRows.length < TOTAL_INTERNAL_GENERATIONS) {
+      fullRows.push(gen.next().value);
+    }
+    if (fullRows.length > TOTAL_INTERNAL_GENERATIONS) {
+      fullRows = fullRows.slice(0, TOTAL_INTERNAL_GENERATIONS);
+    }
     requestedN = requestedRows.length;
     effectiveN = requestedRows.length;
     expanded = requestedRows.length <= 200;
@@ -484,8 +523,17 @@ function generate() {
     const n = toIntStrict(el<HTMLInputElement>("count").value, "n");
     if (n <= 0) throw new Error("n must be > 0");
 
+    const seen = new Map<string, number>();
+
     for (let i = 0; i < TOTAL_INTERNAL_GENERATIONS; i += 1) {
-      fullRows.push(gen.next().value);
+      const val = gen.next().value;
+      const key = val.stateKey ?? val.x.toString();
+      if (seen.has(key) && val.repeatOf === undefined) {
+        val.repeatOf = seen.get(key);
+      } else if (!seen.has(key)) {
+        seen.set(key, i);
+      }
+      fullRows.push(val);
     }
 
     effectiveN = Math.min(n, TOTAL_INTERNAL_GENERATIONS);

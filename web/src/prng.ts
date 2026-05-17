@@ -2,6 +2,8 @@ export type PRNGOutput = {
   u: number; // normalized in [0,1)
   x: bigint; // raw integer state/output
   aux?: string; // auxiliary info (e.g. squared value)
+  repeatOf?: number; // index of the row this value repeats
+  stateKey?: string; // string representing the full state of the generator
 };
 
 function pow10Big(n: number): bigint {
@@ -131,7 +133,8 @@ export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generat
       u2: Number(v2) / Number(mod),
       x: v1, // Seguimos la secuencia por Val 1
       u: Number(v1) / Number(mod),
-      d: d
+      d: d,
+      stateKey: `${prev},${curr}`
     };
 
     prev = curr;
@@ -169,7 +172,8 @@ export function* laggedFibonacci(
     const x = (buf[iJ] + buf[iK]) % m;
     buf[iK] = x;
     idx += 1;
-    yield { u: Number(x) / Number(m), x };
+    const stateKey = `${idx % k}:${buf.join(',')}`;
+    yield { u: Number(x) / Number(m), x, stateKey };
   }
 }
 
