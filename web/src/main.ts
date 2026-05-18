@@ -48,6 +48,7 @@ type GenerationViewState = {
   histogramMode: HistogramMode;
   requestedN: number;
   effectiveN: number;
+  method: Method;
 };
 
 let currentViewState: GenerationViewState | null = null;
@@ -774,4 +775,3 @@ function wire() {
 }
 
 wire();
-
