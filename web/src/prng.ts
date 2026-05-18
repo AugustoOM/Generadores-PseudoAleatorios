@@ -21,25 +21,17 @@ function centerDigits(value: bigint, d: number): bigint {
   return BigInt(s);
 }
 
-export function* middleSquare(seed: bigint, d: number): Generator<PRNGOutput> {
-  if (d <= 0) throw new Error("Dígitos a extraer debe ser > 0");
+export function* middleSquare(seed: bigint, digits: number): Generator<PRNGOutput> {
+  if (seed < 0n) throw new Error("seed must be >= 0");
+  if (digits <= 0) throw new Error("digits must be > 0");
+  if (digits % 2 !== 0) throw new Error("digits must be even (e.g. 6 -> d=3)");
 
-  const seedText = seed.toString();
-  let sSeed = seed.toString();
-  // Si la semilla es más larga que D, tomamos su centro para empezar
-  if (sSeed.length > d) {
-    if ((sSeed.length - d) % 2 !== 0) sSeed = "0" + sSeed;
-    const start = (sSeed.length - d) / 2;
-    sSeed = sSeed.slice(start, start + d);
-  } else if (sSeed.length < d) {
-    sSeed = sSeed.padStart(d, "0");
-  }
-
-  let x = BigInt(sSeed);
+  const d = digits / 2;
   const mod = pow10Big(d);
+  const seedText = seed.toString();
+  let x = seed % mod;
   let regenerationMsg: string | null = null;
 
-  // Check if seed is zero or square is zero
   if (x === 0n || (x * x) === 0n) {
     const now = new Date();
     const tsSeed = (now.getSeconds() * 1000 + now.getMilliseconds()) % 10000;
@@ -49,98 +41,46 @@ export function* middleSquare(seed: bigint, d: number): Generator<PRNGOutput> {
     x = (x * 12n) % mod;
   }
 
-  // Yield X0 (la semilla ya recortada al centro si era necesario)
-  let auxMsg: string;
-  if (regenerationMsg) {
-    auxMsg = regenerationMsg;
-  } else if (seedText.includes("00")) {
-    auxMsg = "Semilla (x12)";
-  } else {
-    auxMsg = "Semilla (Centro)";
-  }
-  yield { u: Number(x) / Number(mod), x, aux: auxMsg };
-
   while (true) {
     const square = x * x;
-    let s = square.toString();
-
-    // Pad to at least 2*D for consistent centering
-    const minLen = 2 * d;
-    if (s.length < minLen) {
-      s = s.padStart(minLen, "0");
-    }
-    
-    // Paridad para centro exacto
-    if ((s.length - d) % 2 !== 0) {
-      s = "0" + s;
-    }
-
-    const start = (s.length - d) / 2;
-    const center = s.slice(start, start + d);
-    const left = s.slice(0, start);
-    const right = s.slice(start + d);
-
-    x = BigInt(center);
+    const s = square.toString();
+    let center = s.length > 2 ? s.slice(1, -1) : "";
+    if (!center) center = "0";
+    center = center.padStart(d, "0");
+    x = BigInt(center.slice(0, d));
     const u = Number(x) / Number(mod);
-    yield { u, x, aux: `${left} | [${center}] | ${right} (${square})` };
+    const aux = regenerationMsg ?? `center=${center} (${square})`;
+    regenerationMsg = null;
+    yield { u, x, aux };
   }
 }
 
-export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generator<any> {
+export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generator<PRNGOutput> {
+  if (d <= 0) throw new Error("d must be > 0");
+
   const mod = pow10Big(d);
-  let prev = seed1;
-  let curr = seed2;
-  
+  let x0 = centerDigits(seed1, d);
+  let x1 = centerDigits(seed2, d);
+
+  yield { u: Number(x0) / Number(mod), x: x0, aux: "Semilla 1", stateKey: `seed:${x0}` };
+  yield { u: Number(x1) / Number(mod), x: x1, aux: "Semilla 2", stateKey: `${x0},${x1}` };
+
   while (true) {
-    const prod = prev * curr;
-    let s = prod.toString();
-    
-    // Nueva lógica basada en la paridad de la longitud del producto (L)
-    // N = L - (D - 1) es la cantidad de dígitos a extraer del centro.
-    const l = s.length;
-    const n = l - (d - 1);
-    
-    let v1: bigint = 0n;
-    let v2: bigint = 0n;
-    let centerText = "-";
-
-    if (n > 0) {
-      const start = Math.floor((l - n) / 2);
-      centerText = s.slice(start, start + n);
-      
-      if (n <= d) {
-        // Un solo valor (Val 1)
-        v1 = BigInt(centerText);
-        v2 = 0n;
-      } else {
-        // Dos valores (Val 1 y Val 2 solapados)
-        // Val 1: primeros D dígitos. Val 2: últimos D dígitos.
-        v1 = BigInt(centerText.slice(0, d));
-        v2 = BigInt(centerText.slice(n - d, n));
-      }
+    const prod = x0 * x1;
+    let s = prod < 0n ? (-prod).toString() : prod.toString();
+    if (s.length > d) {
+      const start = Math.floor((s.length - d) / 2);
+      s = s.slice(start, start + d);
     }
-
+    const x2 = BigInt(s);
     yield {
-      productA: s,
-      productB: "-",
-      centerA: centerText,
-      centerB: "-",
-      val1Str: v1.toString().padStart(d, "0"),
-      val2Str: v2.toString().padStart(d, "0"),
-      val1: v1,
-      val2: v2,
-      u1: Number(v1) / Number(mod),
-      u2: Number(v2) / Number(mod),
-      x: v1, // Seguimos la secuencia por Val 1
-      u: Number(v1) / Number(mod),
-      d: d,
-      stateKey: `${prev},${curr}`
+      u: Number(x2) / Number(mod),
+      x: x2,
+      aux: `${x0} · ${x1}`,
+      stateKey: `${x1},${x2}`,
     };
-
-    prev = curr;
-    curr = v1;
-
-    if (v1 === 0n && v2 === 0n) break;
+    x0 = x1;
+    x1 = x2;
   }
 }
 
@@ -179,31 +119,22 @@ export function* laggedFibonacci(
 
 export function* multiplicativeLCG(seed: bigint, a: bigint, m: bigint): Generator<PRNGOutput> {
   if (m <= 1n) throw new Error("El módulo m debe ser > 1");
-  
-  let aEff = a % m;
-  if (aEff < 0n) aEff += m;
-  if (aEff === 0n) throw new Error("El multiplicador a no puede ser múltiplo del módulo m");
+  if (a <= 0n || a >= m) throw new Error("a must satisfy 0 < a < m");
 
   let x = seed % m;
   if (x < 0n) x += m;
   if (x === 0n) x = 1n;
 
-  // Yield X0 first
-  yield { u: Number(x) / Number(m), x, aux: "Semilla" };
-
   while (true) {
-    const nextX = (aEff * x) % m;
-    yield { u: Number(nextX) / Number(m), x: nextX, aux: `${aEff} · ${x}` };
+    const nextX = (a * x) % m;
+    yield { u: Number(nextX) / Number(m), x: nextX, aux: `${a} · ${x}` };
     x = nextX;
   }
 }
 
 export function* mixedLCG(seed: bigint, a: bigint, c: bigint, m: bigint): Generator<PRNGOutput> {
   if (m <= 1n) throw new Error("El módulo m debe ser > 1");
-
-  let aEff = a % m;
-  if (aEff < 0n) aEff += m;
-  if (aEff === 0n) throw new Error("El multiplicador a no puede ser múltiplo del módulo m");
+  if (a <= 0n || a >= m) throw new Error("a must satisfy 0 < a < m");
 
   let inc = c % m;
   if (inc < 0n) inc += m;
@@ -211,12 +142,9 @@ export function* mixedLCG(seed: bigint, a: bigint, c: bigint, m: bigint): Genera
   let x = seed % m;
   if (x < 0n) x += m;
 
-  // Yield X0 first
-  yield { u: Number(x) / Number(m), x, aux: "Semilla" };
-
   while (true) {
-    const nextX = (aEff * x + inc) % m;
-    yield { u: Number(nextX) / Number(m), x: nextX, aux: `(${aEff} · ${x} + ${inc})` };
+    const nextX = (a * x + inc) % m;
+    yield { u: Number(nextX) / Number(m), x: nextX, aux: `(${a} · ${x} + ${inc})` };
     x = nextX;
   }
 }
@@ -278,4 +206,3 @@ export function checkHullDobellDetailed(a: bigint, c: bigint, m: bigint): HullDo
 
   return { cond1, cond2, cond3 };
 }
-

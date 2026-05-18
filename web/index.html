@@ -36,7 +36,7 @@
               <label for="method">Metodo</label>
               <select id="method">
                 <option value="middle-square">Cuadrados medios</option>
-              <option value="middle-product">Producto Medio (Bifurcado)</option>
+              <option value="middle-product">Producto Medio</option>
               <option value="fibonacci">Fibonacci Retardado</option>
               <option value="multiplicative">Multiplicativo (LCG)</option>
               <option value="mixed">Mixto (LCG)</option>
@@ -60,17 +60,17 @@
               </div>
             </div>
 
-            <div class="field method method-middle-square method-middle-product">
+            <div class="field method method-middle-square method-middle-product method-fibonacci method-multiplicative method-mixed">
               <label for="count">Cantidad (n)</label>
               <input id="count" type="text" value="10" />
             </div>
 
             <div class="method method-middle-square">
               <div class="field">
-                <label for="digits">Digitos centrales</label>
-                <input id="digits" type="text" value="4" />
+                <label for="digits">Digitos totales</label>
+                <input id="digits" type="text" value="6" />
               </div>
-              <p class="hint">Se extrae el bloque central despues de elevar cada estado al cuadrado.</p>
+              <p class="hint">Debe ser par. Por ejemplo, 6 equivale a estados de 3 digitos.</p>
             </div>
 
             <div class="method method-middle-product">
@@ -84,6 +84,10 @@
                   <label for="x1Prod">X<sub>1</sub></label>
                   <input id="x1Prod" type="text" value="34" />
                 </div>
+              </div>
+              <div class="field">
+                <label for="dProd">Digitos d</label>
+                <input id="dProd" type="text" value="4" />
               </div>
             </div>
 
@@ -117,7 +121,7 @@
               </div>
               <div class="field">
                 <label for="mLcgInput">Modulo m</label>
-                <input id="mLcgInput" type="text" value="2*31-1" />
+                <input id="mLcgInput" type="text" value="2**31-1" />
               </div>
             </div>
 

@@ -17,8 +17,8 @@ const methodDetails: Record<Method, { name: string; description: string }> = {
     description: "Eleva la semilla al cuadrado y toma los dígitos centrales.",
   },
   "middle-product": {
-    name: "Producto medio (Bifurcado)",
-    description: "Multiplica los dos últimos valores y bifurca en dos caminos paralelos.",
+    name: "Producto medio",
+    description: "Multiplica los dos últimos valores y toma los dígitos centrales.",
   },
   fibonacci: {
     name: "Fibonacci retardado",
@@ -140,9 +140,6 @@ function formatU(u: number): string {
 function buildGenerator(method: Method): Generator<PRNGOutput> {
   if (method === "middle-square") {
     const seedInput = el<HTMLInputElement>("seed").value.trim();
-    if (seedInput.length !== 6) {
-      throw new Error("La semilla debe tener exactamente 6 dígitos para el método de cuadrados medios.");
-    }
     const seed = toBigIntStrict(seedInput, "seed");
     const digits = toIntStrict(el<HTMLInputElement>("digits").value, "digits");
     return middleSquare(seed, digits);
@@ -163,8 +160,7 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
     const x1Raw = el<HTMLInputElement>("x1Prod").value.trim();
     const x0 = toBigIntStrict(x0Raw, "X0");
     const x1 = toBigIntStrict(x1Raw, "X1");
-    // Detección automática de D según la longitud de X0
-    const d = x0Raw.length;
+    const d = toIntStrict(el<HTMLInputElement>("dProd").value, "d");
     return middleProduct(x0, x1, d);
   }
   
@@ -207,15 +203,9 @@ function renderTable(rows: any[], method: Method) {
   const thU = el("th-u");
   const thX = el("th-x");
 
-  if (method === "middle-product") {
-    thU.textContent = "u1 | u2";
-    thAux.textContent = "Producto | Centro";
-    thX.textContent = "Val 1 | Val 2";
-  } else {
-    thU.textContent = "u in [0,1)";
-    thAux.textContent = "Cálculo";
-    thX.textContent = "X\u1D62";
-  }
+  thU.textContent = "u in [0,1)";
+  thAux.textContent = "Cálculo";
+  thX.textContent = "X\u1D62";
 
   const sourceOfRepeat = new Set<number>();
   for (const r of rows) {
@@ -248,29 +238,16 @@ function renderTable(rows: any[], method: Method) {
 
     const tdU = document.createElement("td");
     tdU.className = "num";
-    if (method === "middle-product") {
-      tdU.innerHTML = `${formatU(r.u1)}<br>${formatU(r.u2)}`;
-    } else {
-      tdU.textContent = formatU(r.u);
-    }
+    tdU.textContent = formatU(r.u);
 
     const tdAux = document.createElement("td");
     const isRegeneration = r.aux && r.aux.includes("Debido a que la semilla 0");
     tdAux.className = isRegeneration ? "regeneration" : "num";
-    if (method === "middle-product") {
-      tdAux.style.fontSize = "0.85em";
-      tdAux.innerHTML = `P: ${r.productA} | ${r.productB}<br>C: ${r.centerA} | ${r.centerB}`;
-    } else {
-      tdAux.textContent = r.aux ?? "-";
-    }
+    tdAux.textContent = r.aux ?? "-";
 
     const tdX = document.createElement("td");
     tdX.className = "num";
-    if (method === "middle-product") {
-      tdX.innerHTML = `${r.val1Str} | ${r.val2Str}`;
-    } else {
-      tdX.textContent = r.x.toString();
-    }
+    tdX.textContent = r.x.toString();
 
     tr.append(tdIdx, tdU, tdAux, tdX);
     tbody.append(tr);
@@ -591,102 +568,58 @@ function generate() {
   const gen = buildGenerator(method);
   let fullRows: PRNGOutput[] = [];
   let requestedRows: PRNGOutput[] = [];
-  let requestedN = 0;
-  let effectiveN = 0;
-  let expanded = false;
+  const requestedN = toIntStrict(el<HTMLInputElement>("count").value, "n");
+  if (requestedN <= 0) throw new Error("n must be > 0");
 
-  if (method === "mixed" || method === "multiplicative" || method === "fibonacci") {
-    let m: bigint;
-    if (method === "mixed") {
-      m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
-    } else if (method === "multiplicative") {
-      m = toBigIntStrict(el<HTMLInputElement>("mLcgInput").value, "m");
-    } else {
-      m = toBigIntStrict(el<HTMLInputElement>("mFib").value, "m");
+  let period: number | null = null;
+  const seen = new Map<string, number>();
+
+  for (let i = 0; i < TOTAL_INTERNAL_GENERATIONS; i += 1) {
+    const val = gen.next().value;
+    const key = val.stateKey ?? val.x.toString();
+    if (seen.has(key) && val.repeatOf === undefined) {
+      val.repeatOf = seen.get(key);
+      if (period === null) period = i - (seen.get(key) ?? i);
+    } else if (!seen.has(key)) {
+      seen.set(key, i);
     }
+    fullRows.push(val);
+  }
 
-    let full = false;
-    if (method === "mixed") {
-      const a = toBigIntStrict(el<HTMLInputElement>("aMixed").value, "a");
-      const c = toBigIntStrict(el<HTMLInputElement>("cMixed").value, "c");
-      const res = checkHullDobellDetailed(a, c, m);
+  const effectiveN = Math.min(requestedN, TOTAL_INTERNAL_GENERATIONS);
+  requestedRows = fullRows.slice(0, effectiveN);
+  const expanded = requestedRows.length <= 200;
 
-      const box = el<HTMLDivElement>("hull-dobell");
-      box.hidden = false;
+  if (requestedN > TOTAL_INTERNAL_GENERATIONS) {
+    setWarning(`Salida limitada a ${TOTAL_INTERNAL_GENERATIONS} valores para evitar demoras.`);
+  }
 
-      const updateCond = (id: string, ok: boolean) => {
-        const li = el(id);
-        li.className = ok ? "ok" : "fail";
-      };
-      updateCond("hd-c1", res.cond1);
-      updateCond("hd-c2", res.cond2);
-      updateCond("hd-c3", res.cond3);
+  if (method === "mixed") {
+    const m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
+    const a = toBigIntStrict(el<HTMLInputElement>("aMixed").value, "a");
+    const c = toBigIntStrict(el<HTMLInputElement>("cMixed").value, "c");
+    const res = checkHullDobellDetailed(a, c, m);
 
-      full = res.cond1 && res.cond2 && res.cond3;
-      const status = el("hd-status");
-      status.textContent = full ? "Cumple Hull-Dobell (Periodo Completo)" : "No cumple (Periodo Incompleto)";
-      status.className = full ? "status-ok" : "status-fail";
-    } else {
-      el("hull-dobell").hidden = true;
-    }
+    const box = el<HTMLDivElement>("hull-dobell");
+    box.hidden = false;
 
-    const maxPeriod = method === "mixed"
-      ? (full ? m : m)
-      : (method === "fibonacci" ? m : m - 1n);
-    const limit = maxPeriod > BigInt(MAX_PERIOD_OUTPUT) ? MAX_PERIOD_OUTPUT : Number(maxPeriod);
+    const updateCond = (id: string, ok: boolean) => {
+      const li = el(id);
+      li.className = ok ? "ok" : "fail";
+    };
+    updateCond("hd-c1", res.cond1);
+    updateCond("hd-c2", res.cond2);
+    updateCond("hd-c3", res.cond3);
 
-    const periodResult = generateUntilRepeat(gen, limit);
-    requestedRows = periodResult.rows;
-
-    fullRows = [...periodResult.rows];
-    while (fullRows.length < TOTAL_INTERNAL_GENERATIONS) {
-      fullRows.push(gen.next().value);
-    }
-    if (fullRows.length > TOTAL_INTERNAL_GENERATIONS) {
-      fullRows = fullRows.slice(0, TOTAL_INTERNAL_GENERATIONS);
-    }
-    requestedN = requestedRows.length;
-    effectiveN = requestedRows.length;
-    expanded = requestedRows.length <= 200;
-
-    if (periodResult.capped) {
-      setWarning(`Salida limitada a ${periodResult.limit} valores para evitar demoras.`);
-    }
-
-    const periodLabel = periodResult.period === null ? "Periodo detectado: -" : `Periodo detectado: ${periodResult.period}`;
-    if (method === "mixed") {
-      const expected = full ? `Periodo esperado: ${m}` : "Periodo esperado: < m";
-      summarize(method, effectiveN, `${expected} | ${periodLabel}`);
-
-      if (full && periodResult.period !== null && periodResult.period !== Number(m)) {
-        setWarning("Hull-Dobell indica periodo m, pero se detecto una repeticion antes. Revisar parametros o semilla.");
-      }
-    } else {
-      const expected = m > 1n ? `Periodo esperado: <= ${m - 1n}` : "Periodo esperado: -";
-      summarize(method, effectiveN, `${expected} | ${periodLabel}`);
-    }
+    const full = res.cond1 && res.cond2 && res.cond3;
+    const status = el("hd-status");
+    status.textContent = full ? "Cumple Hull-Dobell (Periodo Completo)" : "No cumple (Periodo Incompleto)";
+    status.className = full ? "status-ok" : "status-fail";
+    summarize(method, effectiveN, full ? `Periodo completo esperado: ${m}` : "Periodo esperado: < m");
   } else {
-    const n = toIntStrict(el<HTMLInputElement>("count").value, "n");
-    if (n <= 0) throw new Error("n must be > 0");
-
-    const seen = new Map<string, number>();
-
-    for (let i = 0; i < TOTAL_INTERNAL_GENERATIONS; i += 1) {
-      const val = gen.next().value;
-      const key = val.stateKey ?? val.x.toString();
-      if (seen.has(key) && val.repeatOf === undefined) {
-        val.repeatOf = seen.get(key);
-      } else if (!seen.has(key)) {
-        seen.set(key, i);
-      }
-      fullRows.push(val);
-    }
-
-    effectiveN = Math.min(n, TOTAL_INTERNAL_GENERATIONS);
-    requestedRows = fullRows.slice(0, effectiveN);
-    requestedN = n;
     el("hull-dobell").hidden = true;
-    summarize(method, effectiveN, `Internas: ${TOTAL_INTERNAL_GENERATIONS}`);
+    const periodLabel = period === null ? `Internas: ${TOTAL_INTERNAL_GENERATIONS}` : `Periodo detectado: ${period}`;
+    summarize(method, effectiveN, periodLabel);
   }
 
   currentViewState = {
