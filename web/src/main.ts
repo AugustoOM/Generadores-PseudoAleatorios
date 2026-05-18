@@ -18,7 +18,7 @@ const methodDetails: Record<Method, { name: string; description: string }> = {
   },
   "middle-product": {
     name: "Producto medio (Bifurcado)",
-    description: "Multiplica los dos últimos valores y bifurca en dos caminos paralelos.",
+    description: "Multiplica los últimos valores. Si D es impar, bifurca en dos caminos paralelos.",
   },
   fibonacci: {
     name: "Fibonacci retardado",
@@ -154,7 +154,7 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
       throw new Error("La semilla debe tener exactamente 6 dígitos para el método de cuadrados medios.");
     }
     const seed = toBigIntStrict(seedInput, "seed");
-    const digits = toIntStrict(el<HTMLInputElement>("digits").value, "digits");
+    const digits = seedInput.length;
     return middleSquare(seed, digits);
   }
   if (method === "fibonacci") {

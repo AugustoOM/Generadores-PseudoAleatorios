@@ -40,17 +40,14 @@ export function* middleSquare(seed: bigint, d: number): Generator<PRNGOutput> {
     const square = x * x;
     let s = square.toString();
 
-    // Rellenar con ceros a la izquierda solo si es menor a D
-    if (s.length < d) {
-      s = s.padStart(d, "0");
+    // Regla de 2n: Rellenar siempre con ceros a la izquierda hasta 2*D
+    const targetLen = 2 * d;
+    if (s.length < targetLen) {
+      s = s.padStart(targetLen, "0");
     }
     
-    // Paridad para obtener el centro exacto
-    if ((s.length - d) % 2 !== 0) {
-      s = "0" + s;
-    }
-
-    const start = (s.length - d) / 2;
+    // Índice de inicio inclinado hacia la derecha si D es impar
+    const start = Math.ceil((s.length - d) / 2);
     const center = s.slice(start, start + d);
     const left = s.slice(0, start);
     const right = s.slice(start + d);
@@ -71,35 +68,36 @@ export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generat
     const prod = prev * curr;
     let s = prod.toString();
     
-    // Nueva lógica basada en la paridad de la longitud del producto (L)
-    // N debe ser al menos D para no perder dígitos.
-    const l = s.length;
-    const n = Math.max(d, l - (d - 1));
-    
-    let paddedS = s;
-    if (paddedS.length < n) {
-      paddedS = paddedS.padStart(n, "0");
-    }
-    if ((paddedS.length - n) % 2 !== 0) {
-      paddedS = "0" + paddedS;
+    // Regla de 2n: Rellenar SIEMPRE con ceros a la izquierda hasta 2*D
+    const targetLen = 2 * d;
+    if (s.length < targetLen) {
+      s = s.padStart(targetLen, "0");
     }
     
-    let v1: bigint = 0n;
-    let v2: bigint = 0n;
+    const diff = s.length - d;
+    let v1: bigint;
+    let v2: bigint;
     let centerText = "-";
 
-    const start = (paddedS.length - n) / 2;
-    centerText = paddedS.slice(start, start + n);
-    
-    if (n <= d) {
-      // Un solo valor (Val 1)
+    if (diff % 2 === 0) {
+      // D es par, hay un centro exacto (no hay bifurcación)
+      const start = diff / 2;
+      centerText = s.slice(start, start + d);
       v1 = BigInt(centerText);
       v2 = 0n;
     } else {
-      // Dos valores (Val 1 y Val 2 solapados)
-      // Val 1: primeros D dígitos. Val 2: últimos D dígitos.
-      v1 = BigInt(centerText.slice(0, d));
-      v2 = BigInt(centerText.slice(n - d, n));
+      // D es impar, el centro es ambiguo (bifurcación)
+      const start1 = Math.floor(diff / 2);
+      const start2 = Math.ceil(diff / 2);
+      
+      const c1 = s.slice(start1, start1 + d);
+      const c2 = s.slice(start2, start2 + d);
+      
+      // El bloque central superpuesto abarca D + 1 caracteres
+      centerText = s.slice(start1, start2 + d);
+      
+      v1 = BigInt(c1);
+      v2 = BigInt(c2);
     }
 
     yield {
