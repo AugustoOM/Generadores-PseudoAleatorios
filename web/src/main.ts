@@ -34,36 +34,41 @@ const methodDetails: Record<Method, { name: string; description: string }> = {
   },
 };
 
-const TOTAL_INTERNAL_GENERATIONS = 1000;
-const INITIAL_TABLE_LIMIT = 20;
-const HISTOGRAM_BINS = 10;
-const MAX_PERIOD_OUTPUT = 10000;
+// --- CONSTANTES DE CONFIGURACIÓN ---
+const TOTAL_INTERNAL_GENERATIONS = 1000; // Total de iteraciones internas para pruebas estadísticas
+const INITIAL_TABLE_LIMIT = 20; // Límite inicial de filas visibles en la tabla
+const HISTOGRAM_BINS = 10; // Cantidad de intervalos para el histograma
+const MAX_PERIOD_OUTPUT = 10000; // Límite máximo para evitar bloqueos por periodos largos
 
 type HistogramMode = "requested" | "full";
 
+// Estructura que almacena el estado actual de la generación activa
 type GenerationViewState = {
-  requestedRows: PRNGOutput[];
-  fullRows: PRNGOutput[];
-  expanded: boolean;
-  histogramMode: HistogramMode;
-  requestedN: number;
-  effectiveN: number;
+  requestedRows: PRNGOutput[]; // Filas generadas solicitadas por el usuario
+  fullRows: PRNGOutput[]; // Serie completa de 1000 iteraciones para estadísticas
+  expanded: boolean; // Indica si se muestran todas las filas en la tabla
+  histogramMode: HistogramMode; // Modo de visualización del histograma ("requested" o "full")
+  requestedN: number; // Cantidad total N solicitada
+  effectiveN: number; // Cantidad efectiva generada en tabla
+  method: Method; // Método utilizado para la generación
 };
 
 let currentViewState: GenerationViewState | null = null;
 
+// Estructura de resultados en la búsqueda de períodos / ciclos
 type PeriodResult = {
   rows: PRNGOutput[];
-  period: number | null;
-  capped: boolean;
+  period: number | null; // Periodo detectado o null si no se repite
+  capped: boolean; // True si se superó el límite de seguridad
   limit: number;
 };
 
+// Retorna el valor crítico de la tabla t de Student para un df (grados de libertad) a una significancia de 0.05 bilateral
 function getTTableValue(df: number): number {
   if (df <= 0) return NaN;
-  // Two-tailed t-table values for alpha = 0.05
+  // Valores tabulados de la tabla t de Student para alfa = 0.05 de dos colas
   const tTable: Record<number, number> = {
-    1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 
+    1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571,
     6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
     11: 2.201, 12: 2.179, 13: 2.160, 14: 2.145, 15: 2.131,
     16: 2.120, 17: 2.110, 18: 2.101, 19: 2.093, 20: 2.086,
@@ -73,7 +78,8 @@ function getTTableValue(df: number): number {
   };
 
   if (tTable[df]) return tTable[df];
-  
+
+  // Interpolación lineal aproximada para valores de df no explícitos en el mapa
   if (df < 30) {
     let lower = 1;
     for (const k in tTable) {
@@ -93,24 +99,26 @@ function getTTableValue(df: number): number {
   return 1.960;
 }
 
+// Abrevación rápida para buscar y castear un elemento HTML por su ID
 function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
   if (!node) throw new Error(`Missing element #${id}`);
   return node as T;
 }
 
+// Muestra u oculta múltiples elementos del DOM usando un selector de clase/etiqueta
 function setHidden(selector: string, hidden: boolean) {
   for (const node of document.querySelectorAll<HTMLElement>(selector)) {
     node.hidden = hidden;
   }
 }
 
+// Convierte un string en BigInt con soporte para expresiones exponenciales (ej. 2^31-1 o 2**31-1)
 function toBigIntStrict(value: string, name: string): bigint {
   const s = value.trim().replace(/\s+/g, "");
   if (s.length === 0) throw new Error(`${name} is required`);
 
   try {
-    // Soporte para potencia con *, ** o ^ (ej: 2*31-1, 2**31-1, 2^31-1)
     const match = s.match(/^(\d+)\s*(?:\*\*|\^|\*)\s*(\d+)(?:\s*([-+])\s*(\d+))?$/);
     if (match) {
       const base = BigInt(match[1]);
@@ -126,16 +134,19 @@ function toBigIntStrict(value: string, name: string): bigint {
   }
 }
 
+// Convierte un string numérico en un entero estándar
 function toIntStrict(value: string, name: string): number {
   const bi = toBigIntStrict(value, name);
   return Number(bi);
 }
 
+// Formatea un número decimal u cortando ceros innecesarios a la derecha (máx. 12 decimales)
 function formatU(u: number): string {
   if (!Number.isFinite(u)) return String(u);
   return u.toFixed(12).replace(/0+$/, "").replace(/\.$/, "");
 }
 
+// Construye e instancia la función generadora (PRNG) activa según el método de la interfaz
 function buildGenerator(method: Method): Generator<PRNGOutput> {
   if (method === "middle-square") {
     const seedInput = el<HTMLInputElement>("seed").value.trim();
@@ -146,8 +157,6 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
     const digits = toIntStrict(el<HTMLInputElement>("digits").value, "digits");
     return middleSquare(seed, digits);
   }
-
-
   if (method === "fibonacci") {
     const seed = toBigIntStrict(el<HTMLInputElement>("seed").value, "seed");
     const seed2 = toBigIntStrict(el<HTMLInputElement>("seed2").value, "seed2");
@@ -162,11 +171,10 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
     const x1Raw = el<HTMLInputElement>("x1Prod").value.trim();
     const x0 = toBigIntStrict(x0Raw, "X0");
     const x1 = toBigIntStrict(x1Raw, "X1");
-    // Detección automática de D según la longitud de X0
     const d = x0Raw.length;
     return middleProduct(x0, x1, d);
   }
-  
+
   if (method === "multiplicative") {
     const seed = toBigIntStrict(el<HTMLInputElement>("x0Lcg").value, "X0");
     const a = toBigIntStrict(el<HTMLInputElement>("aLcg").value, "a");
@@ -181,6 +189,7 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
   return mixedLCG(seed, a, c, m);
 }
 
+// Configura la visualización de los campos de entrada de datos según el método PRNG seleccionado
 function updateMethodVisibility(method: Method) {
   setHidden(".method", true);
   if (method === "middle-square") setHidden(".method-middle-square", false);
@@ -198,6 +207,7 @@ function updateMethodVisibility(method: Method) {
   info.append(title, desc);
 }
 
+// Genera y rellena dinámicamente las filas de la tabla de resultados en el HTML de la UI
 function renderTable(rows: any[], method: Method) {
   const tbody = el<HTMLTableSectionElement>("tbody");
   tbody.innerHTML = "";
@@ -276,6 +286,7 @@ function renderTable(rows: any[], method: Method) {
   }
 }
 
+// Ejecuta la Prueba Chi-Cuadrado de Uniformidad y renderiza las barras del histograma en la interfaz
 function renderHistogram(rows: PRNGOutput[], mode: HistogramMode) {
   const host = el<HTMLDivElement>("hist-bars");
   const meta = el<HTMLParagraphElement>("hist-meta");
@@ -291,7 +302,7 @@ function renderHistogram(rows: PRNGOutput[], mode: HistogramMode) {
   const K = 10;
   const n = rows.length;
   const counts = new Array<number>(K).fill(0);
-  
+
   for (const row of rows) {
     let bin = Math.floor(row.u * K);
     if (bin >= K) bin = K - 1;
@@ -312,7 +323,7 @@ function renderHistogram(rows: PRNGOutput[], mode: HistogramMode) {
 
     const label = document.createElement("span");
     label.className = "histLabel";
-    label.textContent = `${(bin/K).toFixed(1)}`;
+    label.textContent = `${(bin / K).toFixed(1)}`;
 
     const value = document.createElement("span");
     value.className = "histValue";
@@ -337,24 +348,25 @@ function renderHistogram(rows: PRNGOutput[], mode: HistogramMode) {
 
   el("chi-square").hidden = false;
   el("chi-val").textContent = chi2.toFixed(4);
-  
+
   const status = el("chi-status");
   status.textContent = passed ? "CUMPLE" : "NO CUMPLE";
   status.style.background = passed ? "var(--green)" : "var(--red)";
-  
+
   const msg = el("chi-msg");
-  msg.textContent = passed 
-    ? "La distribución parece uniforme (no se rechaza H0)." 
+  msg.textContent = passed
+    ? "La distribución parece uniforme (no se rechaza H0)."
     : "La distribución no es uniforme (se rechaza H0).";
   msg.style.color = passed ? "var(--green)" : "var(--red)";
 }
 
+// Ejecuta la Prueba t-Student de Autocorrelación para lags 1, 2 y 3 evaluando la independencia estadística
 function renderTTest(rows: PRNGOutput[]) {
   const container = el<HTMLDivElement>("t-test-container");
   const meta = el<HTMLParagraphElement>("t-test-meta");
   const tbody = el<HTMLTableSectionElement>("t-test-tbody");
   tbody.innerHTML = "";
-  
+
   const n = rows.length;
   if (n <= 3) {
     container.hidden = true;
@@ -366,7 +378,7 @@ function renderTTest(rows: PRNGOutput[]) {
   meta.hidden = true;
 
   const lags = [1, 2, 3];
-  
+
   for (const h of lags) {
     if (n - h <= 0) continue;
 
@@ -375,11 +387,11 @@ function renderTTest(rows: PRNGOutput[]) {
       sum += rows[i].u * rows[i + h].u;
     }
 
-    const rho = ( (1 / (n - h)) * sum - 0.25 ) / (1 / 12);
-    
+    const rho = ((1 / (n - h)) * sum - 0.25) / (1 / 12);
+
     const df = n - h - 2;
     if (df <= 0) continue;
-    
+
     const denominator = Math.sqrt(Math.max(0, 1 - rho * rho));
     let tCalc = 0;
     if (denominator > 0) {
@@ -387,12 +399,12 @@ function renderTTest(rows: PRNGOutput[]) {
     } else {
       tCalc = Infinity;
     }
-    
+
     const tTabla = getTTableValue(df);
     const passed = Math.abs(tCalc) < tTabla;
 
     const tr = document.createElement("tr");
-    
+
     const tdH = document.createElement("td");
     tdH.className = "num";
     tdH.textContent = String(h);
@@ -423,6 +435,7 @@ function renderTTest(rows: PRNGOutput[]) {
   renderScatterPlot(rows);
 }
 
+// Dibuja el diagrama de dispersión de desfases (Scatter Plot) en un elemento Canvas (u_i vs u_{i+1})
 function renderScatterPlot(rows: PRNGOutput[]) {
   const canvas = el<HTMLCanvasElement>("scatter-plot");
   const ctx = canvas.getContext("2d");
@@ -430,9 +443,9 @@ function renderScatterPlot(rows: PRNGOutput[]) {
 
   const w = canvas.width;
   const h = canvas.height;
-  
+
   ctx.clearRect(0, 0, w, h);
-  
+
   ctx.strokeStyle = "rgba(29, 26, 22, 0.1)";
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -443,21 +456,22 @@ function renderScatterPlot(rows: PRNGOutput[]) {
   ctx.stroke();
 
   ctx.fillStyle = "rgba(32, 95, 143, 0.6)";
-  
+
   const n = rows.length;
   for (let i = 0; i < n - 1; i++) {
     const ux = rows[i].u;
     const uy = rows[i + 1].u;
-    
+
     const px = ux * w;
     const py = (1 - uy) * h;
-    
+
     ctx.beginPath();
     ctx.arc(px, py, 2.5, 0, 2 * Math.PI);
     ctx.fill();
   }
 }
 
+// Actualiza y sincroniza todos los componentes de la interfaz (tabla, histograma, dispersión) según el estado actual
 function updateView() {
   if (!currentViewState) return;
 
@@ -485,6 +499,7 @@ function updateView() {
     : `Ver n (${requestedN})`;
 }
 
+// Calcula y actualiza las estadísticas principales (Mínimo, Máximo y Cantidad) de los valores generados
 function renderStats(rows: PRNGOutput[]) {
   el<HTMLElement>("stat-count").textContent = String(rows.length);
 
@@ -499,6 +514,7 @@ function renderStats(rows: PRNGOutput[]) {
   el<HTMLElement>("stat-max").textContent = formatU(Math.max(...values));
 }
 
+// Restablece el estado de los resultados y limpia las vistas del frontend
 function clearResults() {
   currentViewState = null;
   renderTable([], "multiplicative");
@@ -509,6 +525,7 @@ function clearResults() {
   el<HTMLButtonElement>("toggleTable").hidden = true;
 }
 
+// Define y despliega un mensaje de error crítico en la interfaz
 function setError(message: string | null) {
   const box = el<HTMLDivElement>("error");
   if (!message) {
@@ -520,6 +537,7 @@ function setError(message: string | null) {
   box.textContent = message;
 }
 
+// Define y despliega una advertencia preventiva en la interfaz
 function setWarning(message: string | null) {
   const box = el<HTMLDivElement>("warning");
   if (!message) {
@@ -531,6 +549,7 @@ function setWarning(message: string | null) {
   box.textContent = message;
 }
 
+// Comprueba la validez de la semilla de Cuadrados Medios y devuelve un aviso si se detecta colapso potencial
 function getMiddleSquareZeroSeedWarning(): string | null {
   if (getCurrentMethod() !== "middle-square") return null;
   const rawSeed = el<HTMLInputElement>("seed").value.trim();
@@ -543,6 +562,7 @@ function getMiddleSquareZeroSeedWarning(): string | null {
   return null;
 }
 
+// Muestra una barra de estado resumen con detalles teóricos y empíricos del generador activo
 function summarize(method: Method, n: number, extra?: string) {
   const summary = el<HTMLSpanElement>("summary");
   summary.textContent = extra
@@ -550,6 +570,7 @@ function summarize(method: Method, n: number, extra?: string) {
     : `${methodDetails[method].name} | Generados: ${n}`;
 }
 
+// Ejecuta iteraciones continuas hasta detectar que un estado previo se repite, estimando el periodo
 function generateUntilRepeat(gen: Generator<PRNGOutput>, limit: number): PeriodResult {
   const seen = new Map<string, number>();
   const rows: PRNGOutput[] = [];
@@ -557,7 +578,9 @@ function generateUntilRepeat(gen: Generator<PRNGOutput>, limit: number): PeriodR
   const maxSteps = limit + 1;
 
   for (let i = 0; i < maxSteps; i += 1) {
-    const val = gen.next().value;
+    const nextObj = gen.next();
+    if (nextObj.done) break;
+    const val = nextObj.value;
     const key = val.stateKey ?? val.x.toString();
     if (seen.has(key)) {
       val.repeatOf = seen.get(key);
@@ -577,10 +600,12 @@ function generateUntilRepeat(gen: Generator<PRNGOutput>, limit: number): PeriodR
   };
 }
 
+// Retorna el identificador del método seleccionado actualmente en el control principal
 function getCurrentMethod(): Method {
   return el<HTMLSelectElement>("method").value as Method;
 }
 
+// Controlador maestro que lee parámetros del DOM, invoca el PRNG y guarda el estado para el renderizado
 function generate() {
   setError(null);
   setWarning(getMiddleSquareZeroSeedWarning());
@@ -639,7 +664,9 @@ function generate() {
 
     fullRows = [...periodResult.rows];
     while (fullRows.length < TOTAL_INTERNAL_GENERATIONS) {
-      fullRows.push(gen.next().value);
+      const nextObj = gen.next();
+      if (nextObj.done) break;
+      fullRows.push(nextObj.value);
     }
     if (fullRows.length > TOTAL_INTERNAL_GENERATIONS) {
       fullRows = fullRows.slice(0, TOTAL_INTERNAL_GENERATIONS);
@@ -671,7 +698,9 @@ function generate() {
     const seen = new Map<string, number>();
 
     for (let i = 0; i < TOTAL_INTERNAL_GENERATIONS; i += 1) {
-      const val = gen.next().value;
+      const nextObj = gen.next();
+      if (nextObj.done) break;
+      const val = nextObj.value;
       const key = val.stateKey ?? val.x.toString();
       if (seen.has(key) && val.repeatOf === undefined) {
         val.repeatOf = seen.get(key);
@@ -712,6 +741,7 @@ function generate() {
   };
 }
 
+// Inicializa las pestañas, controladores del DOM y eventos de interacción del usuario en la UI
 function wire() {
   const method = el<HTMLSelectElement>("method");
   method.addEventListener("change", () => {
@@ -728,7 +758,7 @@ function wire() {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
       document.querySelectorAll(".tab-content").forEach(c => (c as HTMLElement).hidden = true);
-      
+
       btn.classList.add("active");
       const targetId = btn.getAttribute("data-target");
       if (targetId) el<HTMLElement>(targetId).hidden = false;
@@ -765,7 +795,7 @@ function wire() {
     if ((event.ctrlKey || event.metaKey) && event.key === "Enter") runGenerate();
   });
 
-  // Generate an initial sample
+  // Generación inicial para precargar la tabla al montar la página
   try {
     generate();
   } catch (e) {

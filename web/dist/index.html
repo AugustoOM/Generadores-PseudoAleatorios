@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Banco PRNG</title>
-    <script type="module" crossorigin src="/assets/index-vwbItP0z.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-QPMpMcn1.css">
+    <script type="module" crossorigin src="/assets/index-Dl6EukAZ.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BHtUhInb.css">
   </head>
   <body>
     <div class="desk">
@@ -38,10 +38,11 @@
               <label for="method">Metodo</label>
               <select id="method">
                 <option value="middle-square">Cuadrados medios</option>
-                <option value="fibonacci">Fibonacci retardado</option>
-                <option value="multiplicative">Multiplicativo (LCG)</option>
-                <option value="mixed">Mixto (LCG)</option>
-              </select>
+              <option value="middle-product">Producto Medio (Bifurcado)</option>
+              <option value="fibonacci">Fibonacci Retardado</option>
+              <option value="multiplicative">Multiplicativo (LCG)</option>
+              <option value="mixed">Mixto (LCG)</option>
+            </select>
             </div>
 
             <div id="methodInfo" class="note" aria-live="polite">
@@ -51,43 +52,58 @@
 
             <div class="field method method-middle-square method-fibonacci">
               <label for="seed">Semilla</label>
-              <input id="seed" type="number" inputmode="numeric" value="12345" />
+              <input id="seed" type="text" value="123456" />
             </div>
 
             <div class="method method-fibonacci">
               <div class="field">
                 <label for="seed2">Semilla 2</label>
-                <input id="seed2" type="number" inputmode="numeric" value="67890" />
+                <input id="seed2" type="text" value="67890" />
               </div>
             </div>
 
-            <div class="field method method-middle-square method-fibonacci method-multiplicative method-mixed">
+            <div class="field method method-middle-square method-middle-product">
               <label for="count">Cantidad (n)</label>
-              <input id="count" type="number" inputmode="numeric" min="1" value="10" />
+              <input id="count" type="text" value="10" />
             </div>
 
             <div class="method method-middle-square">
               <div class="field">
                 <label for="digits">Digitos centrales</label>
-                <input id="digits" type="number" inputmode="numeric" min="1" value="4" />
+                <input id="digits" type="text" value="4" />
               </div>
               <p class="hint">Se extrae el bloque central despues de elevar cada estado al cuadrado.</p>
             </div>
 
+            <div class="method method-middle-product">
+              <div class="equation">X<sub>i+1</sub> = middle(X<sub>i</sub> · X<sub>i-1</sub>)</div>
+              <div class="fieldPair">
+                <div class="field">
+                  <label for="x0Prod">X<sub>0</sub></label>
+                  <input id="x0Prod" type="text" value="12" />
+                </div>
+                <div class="field">
+                  <label for="x1Prod">X<sub>1</sub></label>
+                  <input id="x1Prod" type="text" value="34" />
+                </div>
+              </div>
+            </div>
+
             <div class="method method-fibonacci">
+              <div class="equation">X<sub>i</sub> = (X<sub>i-j</sub> + X<sub>i-k</sub>) mod m</div>
               <div class="fieldPair">
                 <div class="field">
                   <label for="j">Retardo j</label>
-                  <input id="j" type="number" inputmode="numeric" min="1" value="24" />
+                  <input id="j" type="text" value="24" />
                 </div>
                 <div class="field">
                   <label for="k">Retardo k</label>
-                  <input id="k" type="number" inputmode="numeric" min="2" value="55" />
+                  <input id="k" type="text" value="55" />
                 </div>
               </div>
               <div class="field">
                 <label for="mFib">Modulo m</label>
-                <input id="mFib" type="number" inputmode="numeric" min="2" value="2147483647" />
+                <input id="mFib" type="text" value="2147483647" />
               </div>
             </div>
 
@@ -95,7 +111,7 @@
               <div class="equation">X<sub>i+1</sub> = (a &middot; X<sub>i</sub>) mod m</div>
               <div class="field">
                 <label for="x0Lcg">X<sub>0</sub></label>
-                <input id="x0Lcg" type="number" inputmode="numeric" value="12345" />
+                <input id="x0Lcg" type="text" value="12345" />
               </div>
               <div class="field">
                 <label for="aLcg">Multiplicador a</label>
@@ -111,21 +127,21 @@
               <div class="equation">X<sub>i+1</sub> = (a &middot; X<sub>i</sub> + c) mod m</div>
               <div class="field">
                 <label for="x0Mixed">X<sub>0</sub></label>
-                <input id="x0Mixed" type="number" inputmode="numeric" value="15" />
+                <input id="x0Mixed" type="text" value="15" />
               </div>
               <div class="fieldPair">
                 <div class="field">
                   <label for="aMixed">Multiplicador a</label>
-                  <input id="aMixed" type="number" inputmode="numeric" min="1" value="8" />
+                  <input id="aMixed" type="text" value="8" />
                 </div>
                 <div class="field">
                   <label for="cMixed">Incremento c</label>
-                  <input id="cMixed" type="number" inputmode="numeric" value="16" />
+                  <input id="cMixed" type="text" value="16" />
                 </div>
               </div>
               <div class="field">
                 <label for="mMixed">Modulo m</label>
-                <input id="mMixed" type="number" inputmode="numeric" min="2" value="100" />
+                <input id="mMixed" type="text" value="100" />
               </div>
 
               <div id="hull-dobell" class="checklist" hidden>
@@ -181,9 +197,9 @@
                   <thead>
                     <tr>
                       <th>#</th>
-                      <th>u en [0,1)</th>
-                      <th>Calculo</th>
-                      <th>X<sub>i</sub></th>
+                      <th id="th-u">u en [0,1)</th>
+                      <th id="th-aux">Calculo</th>
+                      <th id="th-x">X<sub>i</sub></th>
                     </tr>
                   </thead>
                   <tbody id="tbody"></tbody>
@@ -195,12 +211,62 @@
               <div class="histTop">
                 <div>
                   <span class="tag">Analitica</span>
-                  <h3 id="hist-title">Histograma de frecuencia</h3>
+                  <h3 id="hist-title">Pruebas Estadísticas</h3>
                 </div>
                 <button id="toggleHistogram" class="copy" type="button">Ver 1000 iteraciones</button>
               </div>
-              <p id="hist-meta" class="histMeta">Sin datos</p>
-              <div id="hist-bars" class="histBars" aria-live="polite"></div>
+              
+              <div class="tabs">
+                <button class="tab-btn active" data-target="tab-chi">Uniformidad (Chi-Cuadrado)</button>
+                <button class="tab-btn" data-target="tab-t">Independencia (Test t)</button>
+              </div>
+
+              <div id="tab-chi" class="tab-content active">
+                <p id="hist-meta" class="histMeta">Sin datos</p>
+                <div id="hist-bars" class="histBars" aria-live="polite"></div>
+
+                <div id="chi-square" class="chiSquare" hidden>
+                  <div class="chiTop">
+                    <h4>Prueba Chi-Cuadrado (&chi;<sup>2</sup>)</h4>
+                    <span id="chi-status" class="tag">?</span>
+                  </div>
+                  <div class="chiStats">
+                    <div class="chiStat">
+                      <span>&chi;<sup>2</sup> Calculado</span>
+                      <strong id="chi-val">-</strong>
+                    </div>
+                    <div class="chiStat">
+                      <span>&chi;<sup>2</sup> Tabla (&alpha;=0.05)</span>
+                      <strong id="chi-crit">16.919</strong>
+                    </div>
+                  </div>
+                  <p id="chi-msg" class="chiMsg"></p>
+                </div>
+              </div>
+
+              <div id="tab-t" class="tab-content" hidden>
+                <div id="t-test-container" hidden>
+                  <div class="tTableWrapper">
+                    <table class="table" aria-label="Resultados del Test t">
+                      <thead>
+                        <tr>
+                          <th>h</th>
+                          <th>&rho;</th>
+                          <th>t Calc.</th>
+                          <th>t Tabla</th>
+                          <th>Decisión (H0)</th>
+                        </tr>
+                      </thead>
+                      <tbody id="t-test-tbody"></tbody>
+                    </table>
+                  </div>
+                  <div class="scatterWrapper">
+                    <h4>Gráfico de Dispersión (h=1)</h4>
+                    <canvas id="scatter-plot" width="400" height="400"></canvas>
+                  </div>
+                </div>
+                <p id="t-test-meta" class="histMeta">Sin datos suficientes para evaluar (se requieren n > 3)</p>
+              </div>
             </div>
           </section>
         </main>
@@ -212,6 +278,6 @@
         </footer>
       </div>
     </div>
-
+
   </body>
 </html>

@@ -1,17 +1,19 @@
 export type PRNGOutput = {
-  u: number; // normalized in [0,1)
-  x: bigint; // raw integer state/output
-  aux?: string; // auxiliary info (e.g. squared value)
-  repeatOf?: number; // index of the row this value repeats
-  stateKey?: string; // string representing the full state of the generator
+  u: number; // Valor normalizado en [0,1)
+  x: bigint; // Estado o salida entera cruda (sin normalizar)
+  aux?: string; // Información auxiliar opcional (ej: valor al cuadrado)
+  repeatOf?: number; // Índice de la fila donde este valor se repite
+  stateKey?: string; // Cadena de texto que representa el estado completo único del generador
 };
 
+// Utilidad para calcular potencias de 10 con BigInt
 function pow10Big(n: number): bigint {
   let r = 1n;
   for (let i = 0; i < n; i += 1) r *= 10n;
   return r;
 }
 
+// Extrae los d dígitos centrales de un número BigInt
 function centerDigits(value: bigint, d: number): bigint {
   let s = (value < 0n ? -value : value).toString();
   if (s.length > d) {
@@ -21,56 +23,29 @@ function centerDigits(value: bigint, d: number): bigint {
   return BigInt(s);
 }
 
+// Generador de Números Pseudoaleatorios: Método de Cuadrados Medios
 export function* middleSquare(seed: bigint, d: number): Generator<PRNGOutput> {
   if (d <= 0) throw new Error("Dígitos a extraer debe ser > 0");
 
-  const seedText = seed.toString();
-  let sSeed = seed.toString();
-  // Si la semilla es más larga que D, tomamos su centro para empezar
-  if (sSeed.length > d) {
-    if ((sSeed.length - d) % 2 !== 0) sSeed = "0" + sSeed;
-    const start = (sSeed.length - d) / 2;
-    sSeed = sSeed.slice(start, start + d);
-  } else if (sSeed.length < d) {
-    sSeed = sSeed.padStart(d, "0");
-  }
-
-  let x = BigInt(sSeed);
+  let x = seed;
   const mod = pow10Big(d);
-  let regenerationMsg: string | null = null;
 
-  // Check if seed is zero or square is zero
-  if (x === 0n || (x * x) === 0n) {
-    const now = new Date();
-    const tsSeed = (now.getSeconds() * 1000 + now.getMilliseconds()) % 10000;
-    x = BigInt(tsSeed % Number(mod)) || 1n;
-    regenerationMsg = `Debido a que la semilla 0 degenera rápidamente, se generó una nueva semilla: ${tsSeed}`;
-  } else if (seedText.includes("00")) {
-    x = (x * 12n) % mod;
-  }
+  // Normalizar la semilla original basándonos en su propia longitud para no desbordar U en [0,1)
+  const seedStr = x.toString();
+  const seedMod = pow10Big(Math.max(d, seedStr.length));
 
-  // Yield X0 (la semilla ya recortada al centro si era necesario)
-  let auxMsg: string;
-  if (regenerationMsg) {
-    auxMsg = regenerationMsg;
-  } else if (seedText.includes("00")) {
-    auxMsg = "Semilla (x12)";
-  } else {
-    auxMsg = "Semilla (Centro)";
-  }
-  yield { u: Number(x) / Number(mod), x, aux: auxMsg };
+  yield { u: Number(x) / Number(seedMod), x, aux: "Semilla Original" };
 
   while (true) {
     const square = x * x;
     let s = square.toString();
 
-    // Pad to at least 2*D for consistent centering
-    const minLen = 2 * d;
-    if (s.length < minLen) {
-      s = s.padStart(minLen, "0");
+    // Rellenar con ceros a la izquierda solo si es menor a D
+    if (s.length < d) {
+      s = s.padStart(d, "0");
     }
     
-    // Paridad para centro exacto
+    // Paridad para obtener el centro exacto
     if ((s.length - d) % 2 !== 0) {
       s = "0" + s;
     }
@@ -86,6 +61,7 @@ export function* middleSquare(seed: bigint, d: number): Generator<PRNGOutput> {
   }
 }
 
+// Generador de Números Pseudoaleatorios: Método de Producto Medio Bifurcado
 export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generator<any> {
   const mod = pow10Big(d);
   let prev = seed1;
@@ -96,28 +72,34 @@ export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generat
     let s = prod.toString();
     
     // Nueva lógica basada en la paridad de la longitud del producto (L)
-    // N = L - (D - 1) es la cantidad de dígitos a extraer del centro.
+    // N debe ser al menos D para no perder dígitos.
     const l = s.length;
-    const n = l - (d - 1);
+    const n = Math.max(d, l - (d - 1));
+    
+    let paddedS = s;
+    if (paddedS.length < n) {
+      paddedS = paddedS.padStart(n, "0");
+    }
+    if ((paddedS.length - n) % 2 !== 0) {
+      paddedS = "0" + paddedS;
+    }
     
     let v1: bigint = 0n;
     let v2: bigint = 0n;
     let centerText = "-";
 
-    if (n > 0) {
-      const start = Math.floor((l - n) / 2);
-      centerText = s.slice(start, start + n);
-      
-      if (n <= d) {
-        // Un solo valor (Val 1)
-        v1 = BigInt(centerText);
-        v2 = 0n;
-      } else {
-        // Dos valores (Val 1 y Val 2 solapados)
-        // Val 1: primeros D dígitos. Val 2: últimos D dígitos.
-        v1 = BigInt(centerText.slice(0, d));
-        v2 = BigInt(centerText.slice(n - d, n));
-      }
+    const start = (paddedS.length - n) / 2;
+    centerText = paddedS.slice(start, start + n);
+    
+    if (n <= d) {
+      // Un solo valor (Val 1)
+      v1 = BigInt(centerText);
+      v2 = 0n;
+    } else {
+      // Dos valores (Val 1 y Val 2 solapados)
+      // Val 1: primeros D dígitos. Val 2: últimos D dígitos.
+      v1 = BigInt(centerText.slice(0, d));
+      v2 = BigInt(centerText.slice(n - d, n));
     }
 
     yield {
@@ -139,11 +121,10 @@ export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generat
 
     prev = curr;
     curr = v1;
-
-    if (v1 === 0n && v2 === 0n) break;
   }
 }
 
+// Generador de Números Pseudoaleatorios: Método de Fibonacci Retardado (LFG)
 export function* laggedFibonacci(
   seed1: bigint,
   seed2: bigint,
@@ -177,6 +158,7 @@ export function* laggedFibonacci(
   }
 }
 
+// Generador de Números Pseudoaleatorios: Generador Congruencial Lineal (LCG) Multiplicativo
 export function* multiplicativeLCG(seed: bigint, a: bigint, m: bigint): Generator<PRNGOutput> {
   if (m <= 1n) throw new Error("El módulo m debe ser > 1");
   
@@ -188,7 +170,7 @@ export function* multiplicativeLCG(seed: bigint, a: bigint, m: bigint): Generato
   if (x < 0n) x += m;
   if (x === 0n) x = 1n;
 
-  // Yield X0 first
+  // Devolver el estado inicial X0 primero
   yield { u: Number(x) / Number(m), x, aux: "Semilla" };
 
   while (true) {
@@ -198,6 +180,7 @@ export function* multiplicativeLCG(seed: bigint, a: bigint, m: bigint): Generato
   }
 }
 
+// Generador de Números Pseudoaleatorios: Generador Congruencial Lineal (LCG) Mixto
 export function* mixedLCG(seed: bigint, a: bigint, c: bigint, m: bigint): Generator<PRNGOutput> {
   if (m <= 1n) throw new Error("El módulo m debe ser > 1");
 
@@ -211,7 +194,7 @@ export function* mixedLCG(seed: bigint, a: bigint, c: bigint, m: bigint): Genera
   let x = seed % m;
   if (x < 0n) x += m;
 
-  // Yield X0 first
+  // Devolver el estado inicial X0 primero
   yield { u: Number(x) / Number(m), x, aux: "Semilla" };
 
   while (true) {
@@ -221,6 +204,7 @@ export function* mixedLCG(seed: bigint, a: bigint, c: bigint, m: bigint): Genera
   }
 }
 
+// Calcula el Máximo Común Divisor (MCD) de dos números BigInt
 function gcdBigInt(a: bigint, b: bigint): bigint {
   let x = a < 0n ? -a : a;
   let y = b < 0n ? -b : b;
@@ -232,6 +216,7 @@ function gcdBigInt(a: bigint, b: bigint): bigint {
   return x;
 }
 
+// Descompone un número BigInt en sus factores primos únicos
 function uniquePrimeFactors(n: bigint): bigint[] {
   const factors: bigint[] = [];
   let x = n;
@@ -249,17 +234,19 @@ function uniquePrimeFactors(n: bigint): bigint[] {
   return factors;
 }
 
+// Comprueba si un generador congruencial lineal mixto tiene período completo usando Hull-Dobell
 export function mixedLCGHasFullPeriod(a: bigint, c: bigint, m: bigint): boolean {
   const { cond1, cond2, cond3 } = checkHullDobellDetailed(a, c, m);
   return cond1 && cond2 && cond3;
 }
 
 export type HullDobellResult = {
-  cond1: boolean; // gcd(c, m) = 1
-  cond2: boolean; // (a-1) divisible by all prime factors of m
-  cond3: boolean; // if 4|m then 4|(a-1)
+  cond1: boolean; // Condición 1: MCD(c, m) = 1
+  cond2: boolean; // Condición 2: (a-1) divisible por todos los factores primos de m
+  cond3: boolean; // Condición 3: si 4 divide a m, entonces 4 divide a (a-1)
 };
 
+// Evalúa individualmente y en detalle las tres condiciones matemáticas del Teorema de Hull-Dobell
 export function checkHullDobellDetailed(a: bigint, c: bigint, m: bigint): HullDobellResult {
   if (m <= 1n) throw new Error("m must be > 1");
 
