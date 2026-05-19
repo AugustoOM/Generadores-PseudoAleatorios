@@ -4,6 +4,9 @@ export type PRNGOutput = {
   aux?: string; // Información auxiliar opcional (ej: valor al cuadrado)
   repeatOf?: number; // Índice de la fila donde este valor se repite
   stateKey?: string; // Cadena de texto que representa el estado completo único del generador
+  isBifurcated?: boolean; // Verdadero si este estado contiene dos valores separados (ej. producto medio bifurcado)
+  u1?: number; // Primer valor U en caso de bifurcación
+  u2?: number; // Segundo valor U en caso de bifurcación
 };
 
 // Utilidad para calcular potencias de 10 con BigInt
@@ -114,7 +117,8 @@ export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generat
       x: v1, // Seguimos la secuencia por Val 1
       u: Number(v1) / Number(mod),
       d: d,
-      stateKey: `${prev},${curr}`
+      stateKey: `${prev},${curr}`,
+      isBifurcated: diff % 2 !== 0
     };
 
     prev = curr;

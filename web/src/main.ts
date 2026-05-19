@@ -299,12 +299,20 @@ function renderHistogram(rows: PRNGOutput[], mode: HistogramMode) {
   }
 
   // 1. Calcular frecuencias por intervalos (Chi-Cuadrado)
+  const uValues: number[] = [];
+  for (const row of rows) {
+    uValues.push(row.u1 !== undefined ? row.u1 : row.u);
+    if (row.isBifurcated && row.u2 !== undefined) {
+      uValues.push(row.u2);
+    }
+  }
+
   const K = 10;
-  const n = rows.length;
+  const n = uValues.length;
   const counts = new Array<number>(K).fill(0);
 
-  for (const row of rows) {
-    let bin = Math.floor(row.u * K);
+  for (const u of uValues) {
+    let bin = Math.floor(u * K);
     if (bin >= K) bin = K - 1;
     if (bin < 0) bin = 0;
     counts[bin]++;
@@ -367,7 +375,15 @@ function renderTTest(rows: PRNGOutput[]) {
   const tbody = el<HTMLTableSectionElement>("t-test-tbody");
   tbody.innerHTML = "";
 
-  const n = rows.length;
+  const uValues: number[] = [];
+  for (const row of rows) {
+    uValues.push(row.u1 !== undefined ? row.u1 : row.u);
+    if (row.isBifurcated && row.u2 !== undefined) {
+      uValues.push(row.u2);
+    }
+  }
+
+  const n = uValues.length;
   if (n <= 3) {
     container.hidden = true;
     meta.hidden = false;
@@ -384,7 +400,7 @@ function renderTTest(rows: PRNGOutput[]) {
 
     let sum = 0;
     for (let i = 0; i < n - h; i++) {
-      sum += rows[i].u * rows[i + h].u;
+      sum += uValues[i] * uValues[i + h];
     }
 
     const rho = ((1 / (n - h)) * sum - 0.25) / (1 / 12);
@@ -457,10 +473,18 @@ function renderScatterPlot(rows: PRNGOutput[]) {
 
   ctx.fillStyle = "rgba(32, 95, 143, 0.6)";
 
-  const n = rows.length;
+  const uValues: number[] = [];
+  for (const row of rows) {
+    uValues.push(row.u1 !== undefined ? row.u1 : row.u);
+    if (row.isBifurcated && row.u2 !== undefined) {
+      uValues.push(row.u2);
+    }
+  }
+
+  const n = uValues.length;
   for (let i = 0; i < n - 1; i++) {
-    const ux = rows[i].u;
-    const uy = rows[i + 1].u;
+    const ux = uValues[i];
+    const uy = uValues[i + 1];
 
     const px = ux * w;
     const py = (1 - uy) * h;
@@ -731,7 +755,14 @@ function generate() {
   const copyBtn = el<HTMLButtonElement>("copy");
   copyBtn.disabled = requestedRows.length === 0;
   copyBtn.onclick = async () => {
-    const text = requestedRows.map((r) => formatU(r.u)).join("\n");
+    const uValues: number[] = [];
+    for (const r of requestedRows) {
+      uValues.push(r.u1 !== undefined ? r.u1 : r.u);
+      if (r.isBifurcated && r.u2 !== undefined) {
+        uValues.push(r.u2);
+      }
+    }
+    const text = uValues.map(u => formatU(u)).join("\n");
     await navigator.clipboard.writeText(text);
     const previous = copyBtn.innerHTML;
     copyBtn.innerHTML = '<span aria-hidden="true">OK</span>Copiado';
