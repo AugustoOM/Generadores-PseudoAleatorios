@@ -405,17 +405,31 @@ function renderChiSquareDetail(counts: number[], expected: number, chi2: number,
   });
 }
 
+type TTestResult = {
+  h: number;
+  pairs: number;
+  sum: number;
+  averageProduct: number;
+  rho: number;
+  df: number;
+  tCalc: number;
+  tTabla: number;
+  passed: boolean;
+};
+
 // Ejecuta la Prueba t-Student de Autocorrelación para lags 1, 2 y 3 evaluando la independencia estadística
 function renderTTest(rows: PRNGOutput[]) {
   const container = el<HTMLDivElement>("t-test-container");
   const meta = el<HTMLParagraphElement>("t-test-meta");
   const tbody = el<HTMLTableSectionElement>("t-test-tbody");
+  const detail = el<HTMLDivElement>("t-detail");
   tbody.innerHTML = "";
 
   const n = rows.length;
   if (n <= 3) {
     container.hidden = true;
     meta.hidden = false;
+    detail.hidden = true;
     return;
   }
 
@@ -423,6 +437,7 @@ function renderTTest(rows: PRNGOutput[]) {
   meta.hidden = true;
 
   const lags = [1, 2, 3];
+  const results: TTestResult[] = [];
 
   for (const h of lags) {
     if (n - h <= 0) continue;
@@ -432,9 +447,11 @@ function renderTTest(rows: PRNGOutput[]) {
       sum += rows[i].u * rows[i + h].u;
     }
 
-    const rho = ((1 / (n - h)) * sum - 0.25) / (1 / 12);
+    const pairs = n - h;
+    const averageProduct = sum / pairs;
+    const rho = (averageProduct - 0.25) / (1 / 12);
 
-    const df = n - h - 2;
+    const df = pairs - 2;
     if (df <= 0) continue;
 
     const denominator = Math.sqrt(Math.max(0, 1 - rho * rho));
@@ -447,6 +464,7 @@ function renderTTest(rows: PRNGOutput[]) {
 
     const tTabla = getTTableValue(df);
     const passed = Math.abs(tCalc) < tTabla;
+    results.push({ h, pairs, sum, averageProduct, rho, df, tCalc, tTabla, passed });
 
     const tr = document.createElement("tr");
 
@@ -477,7 +495,69 @@ function renderTTest(rows: PRNGOutput[]) {
     tbody.append(tr);
   }
 
+  if (results.length > 0) {
+    renderTTestDetail(rows, results[0]);
+  } else {
+    detail.hidden = true;
+  }
+
   renderScatterPlot(rows);
+}
+
+function formatTValue(value: number): string {
+  if (!Number.isFinite(value)) return "Inf";
+  return Math.abs(value).toFixed(4);
+}
+
+function renderTTestDetail(rows: PRNGOutput[], result: TTestResult) {
+  el<HTMLDivElement>("t-detail").hidden = false;
+  el("t-detail-h").textContent = `h = ${result.h}`;
+  el("t-detail-pairs").textContent = String(result.pairs);
+  el("t-detail-sum").textContent = result.sum.toFixed(4);
+  el("t-detail-avg").textContent = `${result.sum.toFixed(4)} / ${result.pairs} = ${result.averageProduct.toFixed(4)}`;
+  el("t-detail-rho").textContent = `(${result.averageProduct.toFixed(4)} - 0.25) / (1 / 12) = ${result.rho.toFixed(4)}`;
+  el("t-detail-df").textContent = `${result.pairs} - 2 = ${result.df}`;
+  el("t-detail-tcalc").textContent = formatTValue(result.tCalc);
+  el("t-detail-ttable").textContent = result.tTabla.toFixed(4);
+
+  const decision = result.passed
+    ? `Decision: como |t calculado| es menor que t tabla, se acepta H0. No hay evidencia de dependencia para h = ${result.h}.`
+    : `Decision: como |t calculado| es mayor o igual que t tabla, se rechaza H0. Puede existir dependencia para h = ${result.h}.`;
+  el("t-detail-decision").textContent = decision;
+
+  const tbody = el<HTMLTableSectionElement>("t-detail-tbody");
+  tbody.innerHTML = "";
+
+  const visiblePairs = Math.min(result.pairs, 20);
+  el("t-detail-table-note").textContent = visiblePairs === result.pairs
+    ? `Se muestran los ${result.pairs} pares usados en el calculo.`
+    : `Se muestran los primeros ${visiblePairs} pares de ${result.pairs}; la suma y el calculo usan todos los pares.`;
+
+  for (let i = 0; i < visiblePairs; i++) {
+    const ui = rows[i].u;
+    const uLag = rows[i + result.h].u;
+    const product = ui * uLag;
+    const tr = document.createElement("tr");
+
+    const tdI = document.createElement("td");
+    tdI.className = "num";
+    tdI.textContent = String(i + 1);
+
+    const tdUi = document.createElement("td");
+    tdUi.className = "num";
+    tdUi.textContent = formatU(ui);
+
+    const tdULag = document.createElement("td");
+    tdULag.className = "num";
+    tdULag.textContent = formatU(uLag);
+
+    const tdProduct = document.createElement("td");
+    tdProduct.className = "num";
+    tdProduct.textContent = product.toFixed(4);
+
+    tr.append(tdI, tdUi, tdULag, tdProduct);
+    tbody.append(tr);
+  }
 }
 
 // Dibuja el diagrama de dispersión de desfases (Scatter Plot) en un elemento Canvas (u_i vs u_{i+1})

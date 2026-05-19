@@ -846,6 +846,9 @@ button:disabled {
 .tTableWrapper {
   margin-bottom: 20px;
 }
+.tDetail {
+  margin-bottom: 20px;
+}
 .scatterWrapper {
   border: 2px dashed var(--line);
   padding: 14px;
