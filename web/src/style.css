@@ -107,7 +107,7 @@ textarea {
 .tag {
   margin: 0 0 8px;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -150,7 +150,7 @@ h2 {
   display: block;
   margin-bottom: 6px;
   color: rgba(29, 26, 22, 0.72);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -209,14 +209,14 @@ h2 {
 .fieldPair {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
+  gap: 13px;
 }
 
 label {
   display: block;
   margin-bottom: 5px;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -249,7 +249,7 @@ textarea {
 
 .note {
   margin-bottom: 16px;
-  padding: 12px;
+  padding: 13px;
   border: 2px dashed var(--line);
   background: #fffdf4;
   font-family: var(--mono);
@@ -274,7 +274,7 @@ textarea {
 
 .equation {
   margin: 4px 0 16px;
-  padding: 12px;
+  padding: 13px;
   border: 2px solid var(--line);
   border-left-width: 10px;
   background: #fff8cf;
@@ -344,7 +344,7 @@ textarea {
 }
 
 #hd-status {
-  margin: 12px 0 0;
+  margin: 13px 0 0;
   padding-top: 10px;
   border-top: 2px solid var(--line);
   font-family: var(--mono);
@@ -363,7 +363,7 @@ textarea {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
-  padding-top: 12px;
+  padding-top: 13px;
   border-top: 2px solid var(--line);
 }
 
@@ -401,7 +401,7 @@ button:disabled {
 }
 
 .error {
-  margin-top: 12px;
+  margin-top: 13px;
   border: 2px solid var(--red);
   padding: 10px;
   background: #ffe2dc;
@@ -411,7 +411,7 @@ button:disabled {
 }
 
 .warning {
-  margin-top: 12px;
+  margin-top: 13px;
   border: 2px solid var(--yellow);
   padding: 10px;
   background: #fff5cf;
@@ -434,14 +434,14 @@ button:disabled {
   max-width: 390px;
   margin: 0;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 13px;
   text-align: right;
 }
 
 .meters {
   display: grid;
   grid-template-columns: 0.8fr 1fr 1fr;
-  gap: 12px;
+  gap: 13px;
 }
 
 .meter {
@@ -474,7 +474,7 @@ button:disabled {
 .tableTools {
   display: flex;
   justify-content: flex-end;
-  padding: 10px 12px 0;
+  padding: 10px 13px 0;
 }
 
 .output {
@@ -503,7 +503,7 @@ button:disabled {
 .histMeta {
   margin: 0 0 10px;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
 }
 
@@ -541,11 +541,11 @@ button:disabled {
 }
 
 .histLabel {
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .histValue {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
 }
 
@@ -559,7 +559,7 @@ button:disabled {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 13px;
 }
 
 .chiTop h4 {
@@ -572,8 +572,8 @@ button:disabled {
 .chiStats {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 13px;
+  margin-bottom: 13px;
 }
 
 .chiStat {
@@ -599,13 +599,13 @@ button:disabled {
 .chiMsg {
   margin: 0;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 
 .chiDetail {
   display: grid;
-  gap: 12px;
+  gap: 13px;
   margin-top: 16px;
   padding-top: 16px;
   border-top: 2px dashed var(--line);
@@ -614,9 +614,11 @@ button:disabled {
 .chiDetail h4 {
   margin: 0;
   font-family: var(--mono);
-  font-size: 14px;
   text-transform: uppercase;
+  font-size: 16px;
+  font-weight: 900;
 }
+
 
 .chiDetailGrid {
   display: grid;
@@ -630,7 +632,7 @@ button:disabled {
   border: 2px solid var(--line);
   background: #fffdf4;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .chiDetailGrid strong,
@@ -641,6 +643,23 @@ button:disabled {
 .formula {
   margin: 0;
   text-align: center;
+}
+
+#chi-detail .chiDetailGrid span,
+#chi-detail .formula,
+#chi-detail .chiMsg {
+  font-size: 15px;
+  font-weight: 900;
+}
+
+#chi-detail .detailTableWrap .table {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+#chi-detail .detailTableWrap .table thead th {
+  font-size: 13px;
+  font-weight: 900;
 }
 
 .detailTableWrap {
@@ -662,7 +681,7 @@ button:disabled {
 
 .table th,
 .table td {
-  padding: 11px 12px;
+  padding: 11px 13px;
   border-right: 2px solid var(--line);
   border-bottom: 2px solid var(--line);
   text-align: left;
@@ -680,7 +699,7 @@ button:disabled {
   top: 0;
   background: var(--yellow);
   color: var(--ink);
-  font-size: 12px;
+  font-size: 13px;
   text-transform: uppercase;
 }
 
@@ -716,7 +735,7 @@ button:disabled {
   gap: 10px;
   margin-top: 18px;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .footer span {
@@ -819,12 +838,12 @@ button:disabled {
 }
 .tab-btn {
   min-height: 36px;
-  padding: 6px 12px;
+  padding: 6px 13px;
   border: 2px solid var(--line);
   background: var(--paper-2);
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
   cursor: pointer;
@@ -857,7 +876,7 @@ button:disabled {
 }
 .scatterWrapper h4 {
   margin-top: 0;
-  margin-bottom: 12px;
+  margin-bottom: 13px;
   font-family: var(--mono);
   font-size: 14px;
   text-transform: uppercase;
@@ -890,7 +909,7 @@ canvas#scatter-plot {
 .badge {
   display: inline-block;
   padding: 2px 4px;
-  font-size: 10px;
+  font-size: 11px;
   font-family: var(--mono);
   text-transform: uppercase;
   border: 1px solid var(--line);
