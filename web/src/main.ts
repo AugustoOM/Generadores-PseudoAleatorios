@@ -295,6 +295,7 @@ function renderHistogram(rows: PRNGOutput[], mode: HistogramMode) {
   if (rows.length === 0) {
     meta.textContent = "Sin datos";
     el("chi-square").hidden = true;
+    el("chi-detail").hidden = true;
     return;
   }
 
@@ -358,6 +359,50 @@ function renderHistogram(rows: PRNGOutput[], mode: HistogramMode) {
     ? "La distribución parece uniforme (no se rechaza H0)."
     : "La distribución no es uniforme (se rechaza H0).";
   msg.style.color = passed ? "var(--green)" : "var(--red)";
+
+  renderChiSquareDetail(counts, expected, chi2, critical);
+}
+
+function renderChiSquareDetail(counts: number[], expected: number, chi2: number, critical: number) {
+  const k = counts.length;
+  const n = counts.reduce((sum, count) => sum + count, 0);
+  const df = k - 1;
+
+  el("chi-detail").hidden = false;
+  el("chi-detail-n").textContent = String(n);
+  el("chi-detail-k").textContent = String(k);
+  el("chi-detail-expected").textContent = `${n} / ${k} = ${expected.toFixed(4)}`;
+  el("chi-detail-df").textContent = `${k} - 1 = ${df}`;
+  el("chi-detail-critical").textContent = critical.toFixed(3);
+  el("chi-detail-total").textContent = chi2.toFixed(4);
+
+  const tbody = el<HTMLTableSectionElement>("chi-detail-tbody");
+  tbody.innerHTML = "";
+
+  counts.forEach((observed, index) => {
+    const from = index / k;
+    const to = (index + 1) / k;
+    const contribution = Math.pow(observed - expected, 2) / expected;
+
+    const tr = document.createElement("tr");
+    const tdInterval = document.createElement("td");
+    tdInterval.textContent = `[${from.toFixed(1)}, ${to.toFixed(1)}${index === k - 1 ? "]" : ")"}`;
+
+    const tdObserved = document.createElement("td");
+    tdObserved.className = "num";
+    tdObserved.textContent = String(observed);
+
+    const tdExpected = document.createElement("td");
+    tdExpected.className = "num";
+    tdExpected.textContent = expected.toFixed(4);
+
+    const tdContribution = document.createElement("td");
+    tdContribution.className = "num";
+    tdContribution.textContent = contribution.toFixed(4);
+
+    tr.append(tdInterval, tdObserved, tdExpected, tdContribution);
+    tbody.append(tr);
+  });
 }
 
 // Ejecuta la Prueba t-Student de Autocorrelación para lags 1, 2 y 3 evaluando la independencia estadística
@@ -600,6 +645,28 @@ function generateUntilRepeat(gen: Generator<PRNGOutput>, limit: number): PeriodR
   };
 }
 
+function generateRowsWithRepeatMarks(gen: Generator<PRNGOutput>, total: number): PeriodResult {
+  const seen = new Map<string, number>();
+  const rows: PRNGOutput[] = [];
+  let period: number | null = null;
+
+  for (let i = 0; i < total; i += 1) {
+    const nextObj = gen.next();
+    if (nextObj.done) break;
+    const val = nextObj.value;
+    const key = val.stateKey ?? val.x.toString();
+    if (seen.has(key) && val.repeatOf === undefined) {
+      val.repeatOf = seen.get(key);
+      if (period === null) period = i - (seen.get(key) ?? i);
+    } else if (!seen.has(key)) {
+      seen.set(key, i);
+    }
+    rows.push(val);
+  }
+
+  return { rows, period, capped: false, limit: total };
+}
+
 // Retorna el identificador del método seleccionado actualmente en el control principal
 function getCurrentMethod(): Method {
   return el<HTMLSelectElement>("method").value as Method;
@@ -752,7 +819,6 @@ function wire() {
   el<HTMLInputElement>("seed").addEventListener("input", () => {
     setWarning(getMiddleSquareZeroSeedWarning());
   });
-
   const tabBtns = document.querySelectorAll<HTMLButtonElement>(".tab-btn");
   tabBtns.forEach(btn => {
     btn.addEventListener("click", () => {
@@ -804,4 +870,3 @@ function wire() {
 }
 
 wire();
-
