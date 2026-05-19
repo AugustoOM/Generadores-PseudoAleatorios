@@ -146,6 +146,17 @@ function formatU(u: number): string {
   return u.toFixed(12).replace(/0+$/, "").replace(/\.$/, "");
 }
 
+function getUValues(rows: PRNGOutput[]): number[] {
+  const values: number[] = [];
+  for (const row of rows) {
+    values.push(row.u1 !== undefined ? row.u1 : row.u);
+    if (row.isBifurcated && row.u2 !== undefined) {
+      values.push(row.u2);
+    }
+  }
+  return values;
+}
+
 // Construye e instancia la función generadora (PRNG) activa según el método de la interfaz
 function buildGenerator(method: Method): Generator<PRNGOutput> {
   if (method === "middle-square") {
@@ -300,13 +311,7 @@ function renderHistogram(rows: PRNGOutput[], mode: HistogramMode) {
   }
 
   // 1. Calcular frecuencias por intervalos (Chi-Cuadrado)
-  const uValues: number[] = [];
-  for (const row of rows) {
-    uValues.push(row.u1 !== undefined ? row.u1 : row.u);
-    if (row.isBifurcated && row.u2 !== undefined) {
-      uValues.push(row.u2);
-    }
-  }
+  const uValues = getUValues(rows);
 
   const K = 10;
   const n = uValues.length;
@@ -433,13 +438,7 @@ function renderTTest(rows: PRNGOutput[]) {
   const detail = el<HTMLDivElement>("t-detail");
   tbody.innerHTML = "";
 
-  const uValues: number[] = [];
-  for (const row of rows) {
-    uValues.push(row.u1 !== undefined ? row.u1 : row.u);
-    if (row.isBifurcated && row.u2 !== undefined) {
-      uValues.push(row.u2);
-    }
-  }
+  const uValues = getUValues(rows);
 
   const n = uValues.length;
   if (n <= 3) {
@@ -512,7 +511,7 @@ function renderTTest(rows: PRNGOutput[]) {
   }
 
   if (results.length > 0) {
-    renderTTestDetail(rows, results[0]);
+    renderTTestDetail(uValues, results[0]);
   } else {
     detail.hidden = true;
   }
@@ -525,7 +524,7 @@ function formatTValue(value: number): string {
   return Math.abs(value).toFixed(4);
 }
 
-function renderTTestDetail(rows: PRNGOutput[], result: TTestResult) {
+function renderTTestDetail(uValues: number[], result: TTestResult) {
   el<HTMLDivElement>("t-detail").hidden = false;
   el("t-detail-h").textContent = `h = ${result.h}`;
   el("t-detail-pairs").textContent = String(result.pairs);
@@ -550,8 +549,8 @@ function renderTTestDetail(rows: PRNGOutput[], result: TTestResult) {
     : `Se muestran los primeros ${visiblePairs} pares de ${result.pairs}; la suma y el calculo usan todos los pares.`;
 
   for (let i = 0; i < visiblePairs; i++) {
-    const ui = rows[i].u;
-    const uLag = rows[i + result.h].u;
+    const ui = uValues[i];
+    const uLag = uValues[i + result.h];
     const product = ui * uLag;
     const tr = document.createElement("tr");
 
@@ -598,13 +597,7 @@ function renderScatterPlot(rows: PRNGOutput[]) {
 
   ctx.fillStyle = "rgba(32, 95, 143, 0.6)";
 
-  const uValues: number[] = [];
-  for (const row of rows) {
-    uValues.push(row.u1 !== undefined ? row.u1 : row.u);
-    if (row.isBifurcated && row.u2 !== undefined) {
-      uValues.push(row.u2);
-    }
-  }
+  const uValues = getUValues(rows);
 
   const n = uValues.length;
   for (let i = 0; i < n - 1; i++) {
@@ -658,7 +651,7 @@ function renderStats(rows: PRNGOutput[]) {
     return;
   }
 
-  const values = rows.map((r) => r.u).filter(Number.isFinite);
+  const values = getUValues(rows).filter(Number.isFinite);
   el<HTMLElement>("stat-min").textContent = formatU(Math.min(...values));
   el<HTMLElement>("stat-max").textContent = formatU(Math.max(...values));
 }
@@ -902,13 +895,7 @@ function generate() {
   const copyBtn = el<HTMLButtonElement>("copy");
   copyBtn.disabled = requestedRows.length === 0;
   copyBtn.onclick = async () => {
-    const uValues: number[] = [];
-    for (const r of requestedRows) {
-      uValues.push(r.u1 !== undefined ? r.u1 : r.u);
-      if (r.isBifurcated && r.u2 !== undefined) {
-        uValues.push(r.u2);
-      }
-    }
+    const uValues = getUValues(requestedRows);
     const text = uValues.map(u => formatU(u)).join("\n");
     await navigator.clipboard.writeText(text);
     const previous = copyBtn.innerHTML;

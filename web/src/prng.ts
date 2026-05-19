@@ -7,6 +7,15 @@ export type PRNGOutput = {
   isBifurcated?: boolean; // Verdadero si este estado contiene dos valores separados (ej. producto medio bifurcado)
   u1?: number; // Primer valor U en caso de bifurcación
   u2?: number; // Segundo valor U en caso de bifurcación
+  productA?: string;
+  productB?: string;
+  centerA?: string;
+  centerB?: string;
+  val1Str?: string;
+  val2Str?: string;
+  val1?: bigint;
+  val2?: bigint;
+  d?: number;
 };
 
 // Utilidad para calcular potencias de 10 con BigInt
@@ -62,7 +71,7 @@ export function* middleSquare(seed: bigint, d: number): Generator<PRNGOutput> {
 }
 
 // Generador de Números Pseudoaleatorios: Método de Producto Medio Bifurcado
-export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generator<any> {
+export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generator<PRNGOutput> {
   const mod = pow10Big(d);
   let prev = seed1;
   let curr = seed2;
