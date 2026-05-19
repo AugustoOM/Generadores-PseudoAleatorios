@@ -295,6 +295,7 @@ function renderHistogram(rows: PRNGOutput[], mode: HistogramMode) {
   if (rows.length === 0) {
     meta.textContent = "Sin datos";
     el("chi-square").hidden = true;
+    el("chi-detail").hidden = true;
     return;
   }
 
@@ -366,13 +367,70 @@ function renderHistogram(rows: PRNGOutput[], mode: HistogramMode) {
     ? "La distribución parece uniforme (no se rechaza H0)."
     : "La distribución no es uniforme (se rechaza H0).";
   msg.style.color = passed ? "var(--green)" : "var(--red)";
+
+  renderChiSquareDetail(counts, expected, chi2, critical);
 }
+
+function renderChiSquareDetail(counts: number[], expected: number, chi2: number, critical: number) {
+  const k = counts.length;
+  const n = counts.reduce((sum, count) => sum + count, 0);
+  const df = k - 1;
+
+  el("chi-detail").hidden = false;
+  el("chi-detail-n").textContent = String(n);
+  el("chi-detail-k").textContent = String(k);
+  el("chi-detail-expected").textContent = `${n} / ${k} = ${expected.toFixed(4)}`;
+  el("chi-detail-df").textContent = `${k} - 1 = ${df}`;
+  el("chi-detail-critical").textContent = critical.toFixed(3);
+  el("chi-detail-total").textContent = chi2.toFixed(4);
+
+  const tbody = el<HTMLTableSectionElement>("chi-detail-tbody");
+  tbody.innerHTML = "";
+
+  counts.forEach((observed, index) => {
+    const from = index / k;
+    const to = (index + 1) / k;
+    const contribution = Math.pow(observed - expected, 2) / expected;
+
+    const tr = document.createElement("tr");
+    const tdInterval = document.createElement("td");
+    tdInterval.textContent = `[${from.toFixed(1)}, ${to.toFixed(1)}${index === k - 1 ? "]" : ")"}`;
+
+    const tdObserved = document.createElement("td");
+    tdObserved.className = "num";
+    tdObserved.textContent = String(observed);
+
+    const tdExpected = document.createElement("td");
+    tdExpected.className = "num";
+    tdExpected.textContent = expected.toFixed(4);
+
+    const tdContribution = document.createElement("td");
+    tdContribution.className = "num";
+    tdContribution.textContent = contribution.toFixed(4);
+
+    tr.append(tdInterval, tdObserved, tdExpected, tdContribution);
+    tbody.append(tr);
+  });
+}
+
+type TTestResult = {
+  h: number;
+  pairs: number;
+  sum: number;
+  averageProduct: number;
+  rho: number;
+  df: number;
+  tCalc: number;
+  tTabla: number;
+  passed: boolean;
+};
 
 // Ejecuta la Prueba t-Student de Autocorrelación para lags 1, 2 y 3 evaluando la independencia estadística
 function renderTTest(rows: PRNGOutput[]) {
   const container = el<HTMLDivElement>("t-test-container");
   const meta = el<HTMLParagraphElement>("t-test-meta");
   const tbody = el<HTMLTableSectionElement>("t-test-tbody");
+  const detail = el<HTMLDivElement>("t-detail");
   tbody.innerHTML = "";
 
   const uValues: number[] = [];
@@ -387,6 +445,7 @@ function renderTTest(rows: PRNGOutput[]) {
   if (n <= 3) {
     container.hidden = true;
     meta.hidden = false;
+    detail.hidden = true;
     return;
   }
 
@@ -394,6 +453,7 @@ function renderTTest(rows: PRNGOutput[]) {
   meta.hidden = true;
 
   const lags = [1, 2, 3];
+  const results: TTestResult[] = [];
 
   for (const h of lags) {
     if (n - h <= 0) continue;
@@ -403,9 +463,11 @@ function renderTTest(rows: PRNGOutput[]) {
       sum += uValues[i] * uValues[i + h];
     }
 
-    const rho = ((1 / (n - h)) * sum - 0.25) / (1 / 12);
+    const pairs = n - h;
+    const averageProduct = sum / pairs;
+    const rho = (averageProduct - 0.25) / (1 / 12);
 
-    const df = n - h - 2;
+    const df = pairs - 2;
     if (df <= 0) continue;
 
     const denominator = Math.sqrt(Math.max(0, 1 - rho * rho));
@@ -418,6 +480,7 @@ function renderTTest(rows: PRNGOutput[]) {
 
     const tTabla = getTTableValue(df);
     const passed = Math.abs(tCalc) < tTabla;
+    results.push({ h, pairs, sum, averageProduct, rho, df, tCalc, tTabla, passed });
 
     const tr = document.createElement("tr");
 
@@ -448,7 +511,69 @@ function renderTTest(rows: PRNGOutput[]) {
     tbody.append(tr);
   }
 
+  if (results.length > 0) {
+    renderTTestDetail(rows, results[0]);
+  } else {
+    detail.hidden = true;
+  }
+
   renderScatterPlot(rows);
+}
+
+function formatTValue(value: number): string {
+  if (!Number.isFinite(value)) return "Inf";
+  return Math.abs(value).toFixed(4);
+}
+
+function renderTTestDetail(rows: PRNGOutput[], result: TTestResult) {
+  el<HTMLDivElement>("t-detail").hidden = false;
+  el("t-detail-h").textContent = `h = ${result.h}`;
+  el("t-detail-pairs").textContent = String(result.pairs);
+  el("t-detail-sum").textContent = result.sum.toFixed(4);
+  el("t-detail-avg").textContent = `${result.sum.toFixed(4)} / ${result.pairs} = ${result.averageProduct.toFixed(4)}`;
+  el("t-detail-rho").textContent = `(${result.averageProduct.toFixed(4)} - 0.25) / (1 / 12) = ${result.rho.toFixed(4)}`;
+  el("t-detail-df").textContent = `${result.pairs} - 2 = ${result.df}`;
+  el("t-detail-tcalc").textContent = formatTValue(result.tCalc);
+  el("t-detail-ttable").textContent = result.tTabla.toFixed(4);
+
+  const decision = result.passed
+    ? `Decision: como |t calculado| es menor que t tabla, se acepta H0. No hay evidencia de dependencia para h = ${result.h}.`
+    : `Decision: como |t calculado| es mayor o igual que t tabla, se rechaza H0. Puede existir dependencia para h = ${result.h}.`;
+  el("t-detail-decision").textContent = decision;
+
+  const tbody = el<HTMLTableSectionElement>("t-detail-tbody");
+  tbody.innerHTML = "";
+
+  const visiblePairs = Math.min(result.pairs, 20);
+  el("t-detail-table-note").textContent = visiblePairs === result.pairs
+    ? `Se muestran los ${result.pairs} pares usados en el calculo.`
+    : `Se muestran los primeros ${visiblePairs} pares de ${result.pairs}; la suma y el calculo usan todos los pares.`;
+
+  for (let i = 0; i < visiblePairs; i++) {
+    const ui = rows[i].u;
+    const uLag = rows[i + result.h].u;
+    const product = ui * uLag;
+    const tr = document.createElement("tr");
+
+    const tdI = document.createElement("td");
+    tdI.className = "num";
+    tdI.textContent = String(i + 1);
+
+    const tdUi = document.createElement("td");
+    tdUi.className = "num";
+    tdUi.textContent = formatU(ui);
+
+    const tdULag = document.createElement("td");
+    tdULag.className = "num";
+    tdULag.textContent = formatU(uLag);
+
+    const tdProduct = document.createElement("td");
+    tdProduct.className = "num";
+    tdProduct.textContent = product.toFixed(4);
+
+    tr.append(tdI, tdUi, tdULag, tdProduct);
+    tbody.append(tr);
+  }
 }
 
 // Dibuja el diagrama de dispersión de desfases (Scatter Plot) en un elemento Canvas (u_i vs u_{i+1})
@@ -624,6 +749,28 @@ function generateUntilRepeat(gen: Generator<PRNGOutput>, limit: number): PeriodR
   };
 }
 
+function generateRowsWithRepeatMarks(gen: Generator<PRNGOutput>, total: number): PeriodResult {
+  const seen = new Map<string, number>();
+  const rows: PRNGOutput[] = [];
+  let period: number | null = null;
+
+  for (let i = 0; i < total; i += 1) {
+    const nextObj = gen.next();
+    if (nextObj.done) break;
+    const val = nextObj.value;
+    const key = val.stateKey ?? val.x.toString();
+    if (seen.has(key) && val.repeatOf === undefined) {
+      val.repeatOf = seen.get(key);
+      if (period === null) period = i - (seen.get(key) ?? i);
+    } else if (!seen.has(key)) {
+      seen.set(key, i);
+    }
+    rows.push(val);
+  }
+
+  return { rows, period, capped: false, limit: total };
+}
+
 // Retorna el identificador del método seleccionado actualmente en el control principal
 function getCurrentMethod(): Method {
   return el<HTMLSelectElement>("method").value as Method;
@@ -783,7 +930,6 @@ function wire() {
   el<HTMLInputElement>("seed").addEventListener("input", () => {
     setWarning(getMiddleSquareZeroSeedWarning());
   });
-
   const tabBtns = document.querySelectorAll<HTMLButtonElement>(".tab-btn");
   tabBtns.forEach(btn => {
     btn.addEventListener("click", () => {
@@ -835,4 +981,3 @@ function wire() {
 }
 
 wire();
-

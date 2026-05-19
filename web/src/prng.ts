@@ -267,4 +267,3 @@ export function checkHullDobellDetailed(a: bigint, c: bigint, m: bigint): HullDo
 
   return { cond1, cond2, cond3 };
 }
-

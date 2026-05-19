@@ -235,6 +235,36 @@
                     </div>
                   </div>
                   <p id="chi-msg" class="chiMsg"></p>
+
+                  <div id="chi-detail" class="chiDetail" hidden>
+                    <h4>Calculo detallado de chi-cuadrado</h4>
+                    <div class="chiDetailGrid">
+                      <span>Cantidad de datos analizados: <strong id="chi-detail-n">-</strong></span>
+                      <span>Cantidad de intervalos: <strong id="chi-detail-k">10</strong></span>
+                      <span>Frecuencia esperada: <strong id="chi-detail-expected">-</strong></span>
+                      <span>Nivel de significancia: <strong>&alpha; = 0.05</strong></span>
+                      <span>Grados de libertad: <strong id="chi-detail-df">10 - 1 = 9</strong></span>
+                      <span>Valor de tabla: <strong id="chi-detail-critical">16.919</strong></span>
+                    </div>
+                    <p class="formula">&chi;<sup>2</sup> = &Sigma; ((O<sub>i</sub> - E<sub>i</sub>)<sup>2</sup> / E<sub>i</sub>)</p>
+                    <p class="chiMsg">O<sub>i</sub> = frecuencia observada. E<sub>i</sub> = frecuencia esperada.</p>
+                    <div class="detailTableWrap">
+                      <table class="table" aria-label="Calculo detallado de chi-cuadrado">
+                        <thead>
+                          <tr>
+                            <th>Intervalo</th>
+                            <th>Observado O<sub>i</sub></th>
+                            <th>Esperado E<sub>i</sub></th>
+                            <th>Aporte a &chi;<sup>2</sup></th>
+                          </tr>
+                        </thead>
+                        <tbody id="chi-detail-tbody"></tbody>
+                      </table>
+                    </div>
+                    <p class="chiMsg">Suma de aportes: <strong id="chi-detail-total">-</strong></p>
+                    <p class="chiMsg">El chi-cuadrado compara cuántos valores cayeron en cada intervalo contra cuántos se esperaban si la distribución fuera uniforme. Si el valor calculado es menor o igual al valor de tabla, no se rechaza la hipótesis de uniformidad. Si es mayor, se rechaza.</p>
+                    <p class="chiMsg">Con N pequeño, esta prueba debe interpretarse de forma educativa. Para una evaluación más representativa conviene usar más iteraciones, por ejemplo 1000.</p>
+                  </div>
                 </div>
               </div>
 
@@ -253,6 +283,38 @@
                       </thead>
                       <tbody id="t-test-tbody"></tbody>
                     </table>
+                  </div>
+                  <div id="t-detail" class="chiDetail tDetail" hidden>
+                    <h4>Calculo detallado del test t de independencia</h4>
+                    <p class="chiMsg">La prueba compara valores separados por un retardo h. Si existe relacion entre u<sub>i</sub> y u<sub>i+h</sub>, el generador puede no ser independiente.</p>
+                    <div class="chiDetailGrid">
+                      <span>Retardo analizado: <strong id="t-detail-h">h = 1</strong></span>
+                      <span>Pares comparados: <strong id="t-detail-pairs">-</strong></span>
+                      <span>Suma de productos: <strong id="t-detail-sum">-</strong></span>
+                      <span>Promedio de productos: <strong id="t-detail-avg">-</strong></span>
+                      <span>Coeficiente &rho;: <strong id="t-detail-rho">-</strong></span>
+                      <span>Grados de libertad: <strong id="t-detail-df">-</strong></span>
+                      <span>Valor t calculado: <strong id="t-detail-tcalc">-</strong></span>
+                      <span>Valor t tabla: <strong id="t-detail-ttable">-</strong></span>
+                    </div>
+                    <p class="formula">&rho; = (((&Sigma; u<sub>i</sub>u<sub>i+h</sub>) / pares) - 0.25) / (1 / 12)</p>
+                    <p class="formula">t = &rho; * &radic;(gl) / &radic;(1 - &rho;<sup>2</sup>)</p>
+                    <p class="chiMsg">gl = pares - 2. Si |t calculado| es menor que t tabla, no se rechaza H0 y no hay evidencia de dependencia. Si es mayor o igual, se rechaza H0.</p>
+                    <div class="detailTableWrap">
+                      <table class="table" aria-label="Calculo detallado del Test t de independencia">
+                        <thead>
+                          <tr>
+                            <th>i</th>
+                            <th>u<sub>i</sub></th>
+                            <th>u<sub>i+h</sub></th>
+                            <th>Producto</th>
+                          </tr>
+                        </thead>
+                        <tbody id="t-detail-tbody"></tbody>
+                      </table>
+                    </div>
+                    <p class="chiMsg" id="t-detail-table-note">-</p>
+                    <p class="chiMsg" id="t-detail-decision">-</p>
                   </div>
                   <div class="scatterWrapper">
                     <h4>Gráfico de Dispersión (h=1)</h4>

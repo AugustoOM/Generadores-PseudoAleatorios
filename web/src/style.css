@@ -47,7 +47,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -221,7 +222,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 42px;
   border: 2px solid var(--line);
@@ -234,9 +236,15 @@ select {
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   background: #fff8cf;
   box-shadow: inset 0 0 0 3px var(--yellow);
+}
+
+textarea {
+  min-height: 86px;
+  resize: vertical;
 }
 
 .note {
@@ -595,6 +603,56 @@ button:disabled {
   font-weight: 700;
 }
 
+.chiDetail {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 2px dashed var(--line);
+}
+
+.chiDetail h4 {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+.chiDetailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.chiDetailGrid span,
+.formula {
+  padding: 9px 10px;
+  border: 2px solid var(--line);
+  background: #fffdf4;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.chiDetailGrid strong,
+.formula {
+  font-weight: 900;
+}
+
+.formula {
+  margin: 0;
+  text-align: center;
+}
+
+.detailTableWrap {
+  overflow-x: auto;
+  border: 2px solid var(--line);
+}
+
+.detailTableWrap .table th,
+.detailTableWrap .table td {
+  border-bottom-width: 1px;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -733,6 +791,11 @@ button:disabled {
     display: grid;
   }
 
+  .chiStats,
+  .chiDetailGrid {
+    grid-template-columns: 1fr;
+  }
+
   .output {
     max-height: 520px;
   }
@@ -781,6 +844,9 @@ button:disabled {
 
 /* Test t Visuals */
 .tTableWrapper {
+  margin-bottom: 20px;
+}
+.tDetail {
   margin-bottom: 20px;
 }
 .scatterWrapper {
