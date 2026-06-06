@@ -38,6 +38,7 @@ function centerDigits(value: bigint, d: number): bigint {
 // Generador de Números Pseudoaleatorios: Método de Cuadrados Medios
 export function* middleSquare(seed: bigint, d: number): Generator<PRNGOutput> {
   if (d <= 0) throw new Error("Dígitos a extraer debe ser > 0");
+  if (seed < 0n) throw new Error("La semilla debe ser >= 0");
 
   let x = seed;
   const mod = pow10Big(d);
@@ -72,6 +73,9 @@ export function* middleSquare(seed: bigint, d: number): Generator<PRNGOutput> {
 
 // Generador de Números Pseudoaleatorios: Método de Producto Medio Bifurcado
 export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generator<PRNGOutput> {
+  if (d <= 0) throw new Error("La cantidad de digitos d debe ser > 0");
+  if (seed1 < 0n || seed2 < 0n) throw new Error("Las semillas X0 y X1 deben ser >= 0");
+
   const mod = pow10Big(d);
   let prev = seed1;
   let curr = seed2;
@@ -179,10 +183,13 @@ export function* multiplicativeLCG(seed: bigint, a: bigint, m: bigint): Generato
 
   let x = seed % m;
   if (x < 0n) x += m;
-  if (x === 0n) x = 1n;
-
-  // Devolver el estado inicial X0 primero
-  yield { u: Number(x) / Number(m), x, aux: "Semilla" };
+  if (x === 0n) {
+    x = 1n;
+    yield { u: Number(x) / Number(m), x, aux: "Semilla 0 reemplazada por 1 para evitar degeneracion inmediata" };
+  } else {
+    // Devolver el estado inicial X0 primero
+    yield { u: Number(x) / Number(m), x, aux: "Semilla" };
+  }
 
   while (true) {
     const nextX = (aEff * x) % m;

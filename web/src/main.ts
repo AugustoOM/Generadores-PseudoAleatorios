@@ -54,6 +54,13 @@ type GenerationViewState = {
 };
 
 let currentViewState: GenerationViewState | null = null;
+let generationWarnings: string[] = [];
+
+function addGenerationWarning(message: string) {
+  if (!generationWarnings.includes(message)) {
+    generationWarnings.push(message);
+  }
+}
 
 // Estructura de resultados en la búsqueda de períodos / ciclos
 type PeriodResult = {
@@ -137,7 +144,26 @@ function toBigIntStrict(value: string, name: string): bigint {
 // Convierte un string numérico en un entero estándar
 function toIntStrict(value: string, name: string): number {
   const bi = toBigIntStrict(value, name);
+  if (bi > BigInt(Number.MAX_SAFE_INTEGER) || bi < BigInt(Number.MIN_SAFE_INTEGER)) {
+    throw new Error(`${name} excede el rango entero seguro de JavaScript`);
+  }
   return Number(bi);
+}
+
+function requireDigitString(value: string, name: string): string {
+  const s = value.trim();
+  if (!/^\d+$/.test(s)) {
+    throw new Error(`${name} debe contener solo digitos enteros no negativos`);
+  }
+  return s;
+}
+
+function replacementSeed(digits: number, offset = 0): string {
+  const width = Math.max(1, digits);
+  const mod = 10 ** Math.min(width, 12);
+  const base = (Date.now() + offset * 104729) % mod;
+  const normalized = base === 0 ? 1 : base;
+  return normalized.toString().padStart(width, "0").slice(-width);
 }
 
 // Formatea un número decimal u cortando ceros innecesarios a la derecha (máx. 12 decimales)
@@ -160,9 +186,16 @@ function getUValues(rows: PRNGOutput[]): number[] {
 // Construye e instancia la función generadora (PRNG) activa según el método de la interfaz
 function buildGenerator(method: Method): Generator<PRNGOutput> {
   if (method === "middle-square") {
-    const seedInput = el<HTMLInputElement>("seed").value.trim();
+    const seedEl = el<HTMLInputElement>("seed");
+    let seedInput = requireDigitString(seedEl.value, "seed");
     if (seedInput.length !== 6) {
       throw new Error("La semilla debe tener exactamente 6 dígitos para el método de cuadrados medios.");
+    }
+    if (/^0+$/.test(seedInput)) {
+      const replacement = replacementSeed(seedInput.length);
+      seedEl.value = replacement;
+      addGenerationWarning(`La semilla ${seedInput} no sirve para cuadrados medios porque degenera en 0. Se reemplazo por ${replacement}.`);
+      seedInput = replacement;
     }
     const seed = toBigIntStrict(seedInput, "seed");
     const digits = seedInput.length;
@@ -178,8 +211,25 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
   }
 
   if (method === "middle-product") {
-    const x0Raw = el<HTMLInputElement>("x0Prod").value.trim();
-    const x1Raw = el<HTMLInputElement>("x1Prod").value.trim();
+    const x0El = el<HTMLInputElement>("x0Prod");
+    const x1El = el<HTMLInputElement>("x1Prod");
+    let x0Raw = requireDigitString(x0El.value, "X0");
+    let x1Raw = requireDigitString(x1El.value, "X1");
+    if (x0Raw.length !== x1Raw.length) {
+      throw new Error("X0 y X1 deben tener la misma cantidad de digitos en producto medio.");
+    }
+    if (/^0+$/.test(x0Raw)) {
+      const replacement = replacementSeed(x0Raw.length, 1);
+      x0El.value = replacement;
+      addGenerationWarning(`X0=${x0Raw} no sirve para producto medio porque fuerza productos nulos. Se reemplazo por ${replacement}.`);
+      x0Raw = replacement;
+    }
+    if (/^0+$/.test(x1Raw)) {
+      const replacement = replacementSeed(x1Raw.length, 2);
+      x1El.value = replacement;
+      addGenerationWarning(`X1=${x1Raw} no sirve para producto medio porque fuerza productos nulos. Se reemplazo por ${replacement}.`);
+      x1Raw = replacement;
+    }
     const x0 = toBigIntStrict(x0Raw, "X0");
     const x1 = toBigIntStrict(x1Raw, "X1");
     const d = x0Raw.length;
@@ -187,16 +237,53 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
   }
 
   if (method === "multiplicative") {
-    const seed = toBigIntStrict(el<HTMLInputElement>("x0Lcg").value, "X0");
-    const a = toBigIntStrict(el<HTMLInputElement>("aLcg").value, "a");
+    const seedEl = el<HTMLInputElement>("x0Lcg");
+    const aEl = el<HTMLInputElement>("aLcg");
+    let seed = toBigIntStrict(seedEl.value, "X0");
+    let a = toBigIntStrict(aEl.value, "a");
     const m = toBigIntStrict(el<HTMLInputElement>("mLcgInput").value, "m");
+    if (m <= 1n) throw new Error("El modulo m debe ser > 1");
+    let seedEff = seed % m;
+    if (seedEff < 0n) seedEff += m;
+    if (seedEff === 0n) {
+      seed = 1n;
+      seedEl.value = "1";
+      addGenerationWarning("X0 era congruente con 0 modulo m en el LCG multiplicativo. Se reemplazo por 1 para evitar degeneracion inmediata.");
+    }
+    let aEff = a % m;
+    if (aEff < 0n) aEff += m;
+    if (aEff === 0n) {
+      a = 1n;
+      aEl.value = "1";
+      addGenerationWarning("El multiplicador a era multiplo de m. Se reemplazo por 1 para evitar que todos los estados caigan en 0.");
+    }
     return multiplicativeLCG(seed, a, m);
   }
 
-  const seed = toBigIntStrict(el<HTMLInputElement>("x0Mixed").value, "X0");
-  const a = toBigIntStrict(el<HTMLInputElement>("aMixed").value, "a");
-  const c = toBigIntStrict(el<HTMLInputElement>("cMixed").value, "c");
+  const seedEl = el<HTMLInputElement>("x0Mixed");
+  const aEl = el<HTMLInputElement>("aMixed");
+  const cEl = el<HTMLInputElement>("cMixed");
+  const seed = toBigIntStrict(seedEl.value, "X0");
+  let a = toBigIntStrict(aEl.value, "a");
+  let c = toBigIntStrict(cEl.value, "c");
   const m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
+  if (m <= 1n) throw new Error("El modulo m debe ser > 1");
+  let aEff = a % m;
+  if (aEff < 0n) aEff += m;
+  if (aEff === 0n) {
+    a = 1n;
+    aEl.value = "1";
+    addGenerationWarning("El multiplicador a era multiplo de m. Se reemplazo por 1 para evitar una secuencia constante.");
+  }
+  let cEff = c % m;
+  if (cEff < 0n) cEff += m;
+  let seedEff = seed % m;
+  if (seedEff < 0n) seedEff += m;
+  if (seedEff === 0n && cEff === 0n) {
+    c = 1n;
+    cEl.value = "1";
+    addGenerationWarning("X0 y c eran 0 modulo m en el LCG mixto. Se reemplazo c por 1 para evitar degeneracion inmediata.");
+  }
   return mixedLCG(seed, a, c, m);
 }
 
@@ -764,6 +851,26 @@ function generateRowsWithRepeatMarks(gen: Generator<PRNGOutput>, total: number):
   return { rows, period, capped: false, limit: total };
 }
 
+function analyzeDegeneration(rows: PRNGOutput[], method: Method, period: number | null) {
+  const firstRepeatIndex = rows.findIndex(row => row.repeatOf !== undefined);
+  if (firstRepeatIndex >= 0) {
+    const repeatOf = rows[firstRepeatIndex].repeatOf ?? 0;
+    const detectedPeriod = period ?? firstRepeatIndex - repeatOf;
+    addGenerationWarning(
+      `La generacion empieza a degenerarse en la fila ${firstRepeatIndex}: repite el estado de la fila ${repeatOf} y entra en ciclo de periodo ${detectedPeriod}.`
+    );
+  }
+
+  const firstZeroIndex = rows.findIndex(row => row.x === 0n || row.u === 0 || row.u1 === 0 || row.u2 === 0);
+  if (firstZeroIndex >= 0 && (method === "middle-square" || method === "middle-product" || period === 1)) {
+    addGenerationWarning(`Se detecto un estado 0 en la fila ${firstZeroIndex}; desde ahi el generador puede colapsar o perder variabilidad.`);
+  }
+
+  if (period !== null && period <= 5) {
+    addGenerationWarning(`Periodo muy corto (${period}). Cambia semillas o parametros porque la secuencia no es util para simulacion.`);
+  }
+}
+
 // Retorna el identificador del método seleccionado actualmente en el control principal
 function getCurrentMethod(): Method {
   return el<HTMLSelectElement>("method").value as Method;
@@ -772,7 +879,10 @@ function getCurrentMethod(): Method {
 // Controlador maestro que lee parámetros del DOM, invoca el PRNG y guarda el estado para el renderizado
 function generate() {
   setError(null);
-  setWarning(getMiddleSquareZeroSeedWarning());
+  setWarning(null);
+  generationWarnings = [];
+  const initialWarning = getMiddleSquareZeroSeedWarning();
+  if (initialWarning) addGenerationWarning(initialWarning);
   const method = getCurrentMethod();
   updateMethodVisibility(method);
 
@@ -840,7 +950,7 @@ function generate() {
     expanded = requestedRows.length <= 200;
 
     if (periodResult.capped) {
-      setWarning(`Salida limitada a ${periodResult.limit} valores para evitar demoras.`);
+      addGenerationWarning(`Salida limitada a ${periodResult.limit} valores para evitar demoras.`);
     }
 
     const periodLabel = periodResult.period === null ? "Periodo detectado: -" : `Periodo detectado: ${periodResult.period}`;
@@ -849,12 +959,14 @@ function generate() {
       summarize(method, effectiveN, `${expected} | ${periodLabel}`);
 
       if (full && periodResult.period !== null && periodResult.period !== Number(m)) {
-        setWarning("Hull-Dobell indica periodo m, pero se detecto una repeticion antes. Revisar parametros o semilla.");
+        addGenerationWarning("Hull-Dobell indica periodo m, pero se detecto una repeticion antes. Revisar parametros o semilla.");
       }
     } else {
       const expected = m > 1n ? `Periodo esperado: <= ${m - 1n}` : "Periodo esperado: -";
       summarize(method, effectiveN, `${expected} | ${periodLabel}`);
     }
+
+    analyzeDegeneration(requestedRows, method, periodResult.period);
   } else {
     const n = toIntStrict(el<HTMLInputElement>("count").value, "n");
     if (n <= 0) throw new Error("n must be > 0");
@@ -879,6 +991,11 @@ function generate() {
     requestedN = n;
     el("hull-dobell").hidden = true;
     summarize(method, effectiveN, `Internas: ${TOTAL_INTERNAL_GENERATIONS}`);
+    const firstRepeat = fullRows.find(row => row.repeatOf !== undefined);
+    const period = firstRepeat?.repeatOf === undefined
+      ? null
+      : fullRows.indexOf(firstRepeat) - firstRepeat.repeatOf;
+    analyzeDegeneration(fullRows, method, period);
   }
 
   currentViewState = {
@@ -891,6 +1008,7 @@ function generate() {
     method,
   };
   updateView();
+  setWarning(generationWarnings.length > 0 ? generationWarnings.join("\n") : null);
 
   const copyBtn = el<HTMLButtonElement>("copy");
   copyBtn.disabled = requestedRows.length === 0;
