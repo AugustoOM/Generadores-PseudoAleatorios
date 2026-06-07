@@ -78,13 +78,13 @@ export function* middleSquare(seed: bigint, d: number): Generator<PRNGOutput> {
 }
 
 // Generador de Números Pseudoaleatorios: Método de Producto Medio Bifurcado
-export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generator<PRNGOutput> {
+export function* middleProduct(seed1: bigint, seed2: bigint, d: number, useK: boolean): Generator<PRNGOutput> {
   if (d <= 0) throw new Error("La cantidad de digitos d debe ser > 0");
   if (seed1 < 0n || seed2 < 0n) throw new Error("Las semillas X0 y X1 deben ser >= 0");
 
   const mod = pow10Big(d);
-  let prev = seed1;
-  let curr = seed2;
+  let prev = useK ? seed2 : seed1; // Si useK, prev actúa como la constante K fija
+  let curr = useK ? seed1 : seed2; // Si useK, curr es X0. Si no, curr es X1
   
   while (true) {
     const prod = prev * curr;
@@ -124,13 +124,25 @@ export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generat
 
     let auxMessage = "-";
     if (v1 === 0n) {
-      // Estado absorbente detectado. Activar constante K para resembrar.
-      const K = 73n; // Constante elegida empíricamente para evitar colapso
-      v1 = (prev === 0n ? K : prev) * K;
-      const v1Str = v1.toString();
-      v1 = BigInt(v1Str.slice(-Math.min(v1Str.length, d)));
-      if (v1 === 0n) v1 = K;
-      auxMessage = "¡Resembrado dinámico! (K=73)";
+      yield {
+        productA: s,
+        productB: "-",
+        centerA: centerText,
+        centerB: "-",
+        val1Str: v1.toString().padStart(d, "0"),
+        val2Str: v2.toString().padStart(d, "0"),
+        val1: v1,
+        val2: v2,
+        u1: Number(v1) / Number(mod),
+        u2: Number(v2) / Number(mod),
+        x: v1,
+        u: Number(v1) / Number(mod),
+        aux: "Degeneración: el método llega a 0",
+        d: d,
+        stateKey: useK ? `${curr}` : `${prev},${curr}`,
+        isBifurcated: diff % 2 !== 0
+      };
+      break; // Abortar
     }
 
     yield {
@@ -144,15 +156,18 @@ export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generat
       val2: v2,
       u1: Number(v1) / Number(mod),
       u2: Number(v2) / Number(mod),
-      x: v1, // Seguimos la secuencia por Val 1
+      x: v1,
       u: Number(v1) / Number(mod),
       aux: auxMessage,
       d: d,
-      stateKey: `${prev},${curr}`,
+      stateKey: useK ? `${curr}` : `${prev},${curr}`,
       isBifurcated: diff % 2 !== 0
     };
 
-    prev = curr;
+    if (!useK) {
+      prev = curr;
+    }
+    // Si useK es true, prev (K) se mantiene constante
     curr = v1;
   }
 }
@@ -179,6 +194,12 @@ export function* laggedFibonacci(
   if (k > 1) buf.push(x1);
   for (let i = 2; i < k; i += 1) buf.push((buf[i - 1] + buf[i - 2]) % m);
 
+  // Devolver el estado inicial completo
+  for (let i = 0; i < k; i++) {
+    const stateKey = i === 0 ? buf.join(',') : undefined;
+    yield { u: Number(buf[i]) / Number(m), x: buf[i], aux: i < 2 ? "Semilla" : "Relleno inicial", stateKey };
+  }
+
   let idx = 0;
   while (true) {
     const iK = idx % k;
@@ -186,7 +207,14 @@ export function* laggedFibonacci(
     const x = (buf[iJ] + buf[iK]) % m;
     buf[iK] = x;
     idx += 1;
-    const stateKey = `${idx % k}:${buf.join(',')}`;
+    
+    // El estado completo es la ventana de longitud k en orden cronológico
+    const orderedBuf = [];
+    for (let i = 0; i < k; i++) {
+      orderedBuf.push(buf[(idx + i) % k]);
+    }
+    const stateKey = orderedBuf.join(',');
+    
     yield { u: Number(x) / Number(m), x, stateKey };
   }
 }
@@ -211,6 +239,10 @@ export function* multiplicativeLCG(seed: bigint, a: bigint, m: bigint): Generato
 
   while (true) {
     const nextX = (aEff * x) % m;
+    if (nextX === 0n) {
+      yield { u: 0, x: 0n, aux: "Estado absorbente destructivo (Xn = 0)" };
+      break;
+    }
     yield { u: Number(nextX) / Number(m), x: nextX, aux: `${aEff} · ${x}` };
     x = nextX;
   }

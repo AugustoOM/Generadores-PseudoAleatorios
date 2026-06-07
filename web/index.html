@@ -60,8 +60,8 @@
               </div>
             </div>
 
-            <div class="field method method-middle-square method-middle-product">
-              <label for="count">Cantidad (n)</label>
+            <div class="field">
+              <label for="count">Cantidad a extraer (n)</label>
               <input id="count" type="text" value="10" />
             </div>
 
@@ -76,10 +76,18 @@
                   <label for="x0Prod">X<sub>0</sub></label>
                   <input id="x0Prod" type="text" value="12" />
                 </div>
-                <div class="field">
+                <div class="field" id="x1ProdContainer" hidden>
                   <label for="x1Prod">X<sub>1</sub></label>
                   <input id="x1Prod" type="text" value="34" />
                 </div>
+                <div class="field" id="kProdContainer">
+                  <label for="kProd">Constante K</label>
+                  <input id="kProd" type="text" value="73" />
+                </div>
+              </div>
+              <div class="field" style="flex-direction: row; align-items: center; justify-content: space-between;">
+                <label for="useK" style="margin-bottom: 0;">Variante B: Usar Constante K</label>
+                <input id="useK" type="checkbox" checked />
               </div>
             </div>
 

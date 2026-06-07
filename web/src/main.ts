@@ -211,43 +211,43 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
   }
 
   if (method === "middle-product") {
+    const useK = el<HTMLInputElement>("useK").checked;
     const x0Raw = el<HTMLInputElement>("x0Prod").value.trim();
-    const x1Raw = el<HTMLInputElement>("x1Prod").value.trim();
-    if (x0Raw.length !== x1Raw.length) {
+    const x1Raw = useK ? el<HTMLInputElement>("kProd").value.trim() : el<HTMLInputElement>("x1Prod").value.trim();
+    
+    if (!useK && x0Raw.length !== x1Raw.length) {
       throw new Error("X0 y X1 deben tener idéntica longitud de dígitos (n).");
     }
-    if (x0Raw.endsWith("0") || x1Raw.endsWith("0")) {
+    if (x0Raw.endsWith("0") || (!useK && x1Raw.endsWith("0"))) {
       throw new Error("Ninguna semilla puede finalizar en cero (estado absorbente destructivo).");
     }
     const x0 = toBigIntStrict(x0Raw, "X0");
-    const x1 = toBigIntStrict(x1Raw, "X1");
+    const x1 = toBigIntStrict(x1Raw, useK ? "K" : "X1");
     const d = x0Raw.length;
-    return middleProduct(x0, x1, d);
+    return middleProduct(x0, x1, d, useK);
   }
 
   if (method === "multiplicative") {
     const seedEl = el<HTMLInputElement>("x0Lcg");
     const aEl = el<HTMLInputElement>("aLcg");
-    let seed = toBigIntStrict(seedEl.value, "X0");
+    const seed = toBigIntStrict(seedEl.value, "X0");
     if (seed === 0n) throw new Error("La semilla inicial X0 jamás puede ser cero.");
-    let a = toBigIntStrict(aEl.value, "a");
+    const a = toBigIntStrict(aEl.value, "a");
     const m = toBigIntStrict(el<HTMLInputElement>("mLcgInput").value, "m");
     if (m <= 1n) throw new Error("El modulo m debe ser > 1");
     let seedEff = seed % m;
     if (seedEff < 0n) seedEff += m;
     if (seedEff === 0n) {
-      seed = 1n;
       seedEl.value = "1";
       addGenerationWarning("X0 era congruente con 0 modulo m en el LCG multiplicativo. Se reemplazo por 1 para evitar degeneracion inmediata.");
     }
     let aEff = a % m;
     if (aEff < 0n) aEff += m;
     if (aEff === 0n) {
-      a = 1n;
       aEl.value = "1";
       addGenerationWarning("El multiplicador a era multiplo de m. Se reemplazo por 1 para evitar que todos los estados caigan en 0.");
     }
-    return multiplicativeLCG(seed, a, m);
+    return multiplicativeLCG(seedEl.value === "1" ? 1n : seed, aEl.value === "1" ? 1n : a, m);
   }
 
   const seedEl = el<HTMLInputElement>("x0Mixed");
@@ -257,10 +257,22 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
   let a = toBigIntStrict(aEl.value, "a");
   let c = toBigIntStrict(cEl.value, "c");
   const m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
-  
-  const maxParam = seed > a ? (seed > c ? seed : c) : (a > c ? a : c);
-  if (m <= maxParam) {
-    throw new Error(`El módulo m (${m}) debe ser estrictamente mayor que max(X0, a, c) = ${maxParam}.`);
+  if (m <= 1n) throw new Error("El modulo m debe ser > 1");
+  let aEff = a % m;
+  if (aEff < 0n) aEff += m;
+  if (aEff === 0n) {
+    aEl.value = "1";
+    addGenerationWarning("El multiplicador a era multiplo de m. Se reemplazo por 1 para evitar una secuencia constante.");
+    a = 1n;
+  }
+  let cEff = c % m;
+  if (cEff < 0n) cEff += m;
+  let seedEff = seed % m;
+  if (seedEff < 0n) seedEff += m;
+  if (seedEff === 0n && cEff === 0n) {
+    cEl.value = "1";
+    addGenerationWarning("X0 y c eran 0 modulo m en el LCG mixto. Se reemplazo c por 1 para evitar degeneracion inmediata.");
+    c = 1n;
   }
   return mixedLCG(seed, a, c, m);
 }
@@ -615,7 +627,7 @@ function updateView() {
   if (!currentViewState) return;
   const { requestedRows, fullRows, expanded, histogramMode, requestedN, effectiveN, method } = currentViewState;
   
-  const displayRows = expanded ? fullRows : requestedRows.slice(0, INITIAL_TABLE_LIMIT);
+  const displayRows = expanded ? requestedRows : requestedRows.slice(0, INITIAL_TABLE_LIMIT);
   renderTable(displayRows, fullRows, method);
   renderStats(requestedRows);
 
@@ -709,57 +721,7 @@ function summarize(method: Method, n: number, extra?: string) {
     : `${methodDetails[method].name} | Generados: ${n}`;
 }
 
-// Ejecuta iteraciones continuas hasta detectar que un estado previo se repite, estimando el periodo
-function generateUntilRepeat(gen: Generator<PRNGOutput>, limit: number): PeriodResult {
-  const seen = new Map<string, number>();
-  const rows: PRNGOutput[] = [];
-  let period: number | null = null;
-  const maxSteps = limit + 1;
 
-  for (let i = 0; i < maxSteps; i += 1) {
-    const nextObj = gen.next();
-    if (nextObj.done) break;
-    const val = nextObj.value;
-    const key = val.stateKey ?? val.x.toString();
-    if (seen.has(key)) {
-      val.repeatOf = seen.get(key);
-      period = i - (seen.get(key) ?? i);
-      if (rows.length < limit) rows.push(val);
-      break;
-    }
-    seen.set(key, i);
-    if (rows.length < limit) rows.push(val);
-  }
-
-  return {
-    rows,
-    period,
-    capped: rows.length === limit && period === null,
-    limit,
-  };
-}
-
-function generateRowsWithRepeatMarks(gen: Generator<PRNGOutput>, total: number): PeriodResult {
-  const seen = new Map<string, number>();
-  const rows: PRNGOutput[] = [];
-  let period: number | null = null;
-
-  for (let i = 0; i < total; i += 1) {
-    const nextObj = gen.next();
-    if (nextObj.done) break;
-    const val = nextObj.value;
-    const key = val.stateKey ?? val.x.toString();
-    if (seen.has(key) && val.repeatOf === undefined) {
-      val.repeatOf = seen.get(key);
-      if (period === null) period = i - (seen.get(key) ?? i);
-    } else if (!seen.has(key)) {
-      seen.set(key, i);
-    }
-    rows.push(val);
-  }
-
-  return { rows, period, capped: false, limit: total };
-}
 
 function analyzeDegeneration(rows: PRNGOutput[], method: Method, period: number | null) {
   const firstRepeatIndex = rows.findIndex(row => row.repeatOf !== undefined);
@@ -797,130 +759,100 @@ function generate() {
   updateMethodVisibility(method);
 
   const gen = buildGenerator(method);
+  const n = toIntStrict(el<HTMLInputElement>("count").value, "n");
+  if (n <= 0) throw new Error("n must be > 0");
+
   let fullRows: PRNGOutput[] = [];
   let requestedRows: PRNGOutput[] = [];
-  let requestedN = 0;
+  let requestedN = n;
   let effectiveN = 0;
   let expanded = false;
 
-  if (method === "mixed" || method === "multiplicative" || method === "fibonacci") {
-    let m: bigint;
-    if (method === "mixed") {
-      m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
-    } else if (method === "multiplicative") {
-      m = toBigIntStrict(el<HTMLInputElement>("mLcgInput").value, "m");
-    } else {
-      m = toBigIntStrict(el<HTMLInputElement>("mFib").value, "m");
-    }
+  let m: bigint | null = null;
+  let full = false;
 
-    let full = false;
-    if (method === "mixed") {
+  const updateCond = (id: string, ok: boolean) => {
+    const li = el(id);
+    li.className = ok ? "ok" : "fail";
+  };
+
+  if (method === "mixed" || method === "multiplicative" || method === "fibonacci") {
+    if (method === "mixed") m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
+    else if (method === "multiplicative") m = toBigIntStrict(el<HTMLInputElement>("mLcgInput").value, "m");
+    else m = toBigIntStrict(el<HTMLInputElement>("mFib").value, "m");
+
+    if (method === "mixed" && m !== null) {
       const a = toBigIntStrict(el<HTMLInputElement>("aMixed").value, "a");
       const c = toBigIntStrict(el<HTMLInputElement>("cMixed").value, "c");
       const res = checkHullDobellDetailed(a, c, m);
-
-      const box = el<HTMLDivElement>("hull-dobell");
-      box.hidden = false;
-
-      const updateCond = (id: string, ok: boolean) => {
-        const li = el(id);
-        li.className = ok ? "ok" : "fail";
-      };
+      el("hull-dobell").hidden = false;
       updateCond("hd-c1", res.cond1);
       updateCond("hd-c2", res.cond2);
       updateCond("hd-c3", res.cond3);
-
       full = res.cond1 && res.cond2 && res.cond3;
       const status = el("hd-status");
       status.textContent = full ? "Cumple Hull-Dobell (Periodo Completo)" : "No cumple (Periodo Incompleto)";
       status.className = full ? "status-ok" : "status-fail";
-    } else if (method === "multiplicative") {
+    } else if (method === "multiplicative" && m !== null) {
       el("hull-dobell").hidden = true;
-      // Comprobar potencia de 2
       if ((m & (m - 1n)) === 0n && m > 1n) {
         const seed = toBigIntStrict(el<HTMLInputElement>("x0Lcg").value, "X0");
         const a = toBigIntStrict(el<HTMLInputElement>("aLcg").value, "a");
         const isOddSeed = seed % 2n !== 0n;
         const validA = a % 8n === 3n || a % 8n === 5n;
-        if (isOddSeed && validA) {
-          setWarning("✓ Parámetros óptimos para m=2^b: X0 impar y a ≡ 3 o 5 (mod 8).");
-        } else {
-          setWarning("⚠ Para módulo m=2^b, se recomienda semilla X0 impar y multiplicador a ≡ 3 o 5 (mod 8) para maximizar el período.");
-        }
+        if (isOddSeed && validA) setWarning("✓ Parámetros óptimos para m=2^b: X0 impar y a ≡ 3 o 5 (mod 8).");
+        else setWarning("⚠ Para módulo m=2^b, se recomienda semilla X0 impar y multiplicador a ≡ 3 o 5 (mod 8) para maximizar el período.");
       }
     } else {
       el("hull-dobell").hidden = true;
     }
-
-    const maxPeriod = method === "mixed"
-      ? (full ? m : m)
-      : (method === "fibonacci" ? m : m - 1n);
-    const limit = maxPeriod > BigInt(MAX_PERIOD_OUTPUT) ? MAX_PERIOD_OUTPUT : Number(maxPeriod);
-
-    const periodResult = generateUntilRepeat(gen, limit);
-    requestedRows = periodResult.rows;
-
-    fullRows = [...periodResult.rows];
-    while (fullRows.length < TOTAL_INTERNAL_GENERATIONS) {
-      const nextObj = gen.next();
-      if (nextObj.done) break;
-      fullRows.push(nextObj.value);
-    }
-    if (fullRows.length > TOTAL_INTERNAL_GENERATIONS) {
-      fullRows = fullRows.slice(0, TOTAL_INTERNAL_GENERATIONS);
-    }
-    requestedN = requestedRows.length;
-    effectiveN = requestedRows.length;
-    expanded = requestedRows.length <= 200;
-
-    if (periodResult.capped) {
-      addGenerationWarning(`Salida limitada a ${periodResult.limit} valores para evitar demoras.`);
-    }
-
-    const periodLabel = periodResult.period === null ? "Periodo detectado: -" : `Periodo detectado: ${periodResult.period}`;
-    if (method === "mixed") {
-      const expected = full ? `Periodo esperado: ${m}` : "Periodo esperado: < m";
-      summarize(method, effectiveN, `${expected} | ${periodLabel}`);
-
-      if (full && periodResult.period !== null && periodResult.period !== Number(m)) {
-        addGenerationWarning("Hull-Dobell indica periodo m, pero se detecto una repeticion antes. Revisar parametros o semilla.");
-      }
-    } else {
-      const expected = m > 1n ? `Periodo esperado: <= ${m - 1n}` : "Periodo esperado: -";
-      summarize(method, effectiveN, `${expected} | ${periodLabel}`);
-    }
-
-    analyzeDegeneration(requestedRows, method, periodResult.period);
   } else {
-    const n = toIntStrict(el<HTMLInputElement>("count").value, "n");
-    if (n <= 0) throw new Error("n must be > 0");
+    el("hull-dobell").hidden = true;
+  }
 
-    const seen = new Map<string, number>();
-
-    for (let i = 0; i < TOTAL_INTERNAL_GENERATIONS; i += 1) {
-      const nextObj = gen.next();
-      if (nextObj.done) break;
-      const val = nextObj.value;
-      const key = val.stateKey ?? val.x.toString();
-      if (seen.has(key) && val.repeatOf === undefined) {
-        val.repeatOf = seen.get(key);
-      } else if (!seen.has(key)) {
+  const seen = new Map<string, number>();
+  const maxGen = Math.max(TOTAL_INTERNAL_GENERATIONS, n);
+  
+  for (let i = 0; i < maxGen; i += 1) {
+    const nextObj = gen.next();
+    if (nextObj.done) break;
+    const val = nextObj.value;
+    const key = val.stateKey ?? val.x.toString();
+    
+    if (seen.has(key) && val.repeatOf === undefined) {
+      val.repeatOf = seen.get(key);
+    } else if (!seen.has(key)) {
+      if (val.stateKey !== undefined || (method !== "fibonacci" && method !== "middle-product")) {
         seen.set(key, i);
       }
-      fullRows.push(val);
     }
-
-    effectiveN = Math.min(n, TOTAL_INTERNAL_GENERATIONS);
-    requestedRows = fullRows.slice(0, effectiveN);
-    requestedN = n;
-    el("hull-dobell").hidden = true;
-    summarize(method, effectiveN, `Internas: ${TOTAL_INTERNAL_GENERATIONS}`);
-    const firstRepeat = fullRows.find(row => row.repeatOf !== undefined);
-    const period = firstRepeat?.repeatOf === undefined
-      ? null
-      : fullRows.indexOf(firstRepeat) - firstRepeat.repeatOf;
-    analyzeDegeneration(fullRows, method, period);
+    fullRows.push(val);
   }
+
+  effectiveN = Math.min(n, fullRows.length);
+  requestedRows = fullRows.slice(0, effectiveN);
+  expanded = effectiveN <= 200;
+
+  const firstRepeat = fullRows.find(row => row.repeatOf !== undefined);
+  const period = firstRepeat?.repeatOf === undefined ? null : fullRows.indexOf(firstRepeat) - firstRepeat.repeatOf;
+  const periodLabel = period === null ? "Periodo detectado: -" : `Periodo detectado: ${period}`;
+
+  if (method === "mixed" && m !== null) {
+    const expected = full ? `Periodo esperado: ${m}` : "Periodo esperado: < m";
+    summarize(method, effectiveN, `${expected} | ${periodLabel}`);
+    if (full && period !== null && period !== Number(m)) {
+      addGenerationWarning("Hull-Dobell indica periodo m, pero se detecto una repeticion antes. Revisar parametros o semilla.");
+    }
+  } else if (method === "multiplicative" && m !== null) {
+    const expected = m > 1n ? `Periodo esperado: <= ${m - 1n}` : "Periodo esperado: -";
+    summarize(method, effectiveN, `${expected} | ${periodLabel}`);
+  } else if (method === "fibonacci") {
+    summarize(method, effectiveN, `Periodo esperado: - | ${periodLabel}`);
+  } else {
+    summarize(method, effectiveN, `Internas: ${maxGen} | ${periodLabel}`);
+  }
+
+  analyzeDegeneration(fullRows, method, period);
 
   currentViewState = {
     requestedRows,
@@ -976,6 +908,18 @@ function wire() {
     currentViewState.expanded = !currentViewState.expanded;
     updateView();
   });
+
+  const useKEl = el<HTMLInputElement>("useK");
+  if (useKEl) {
+    useKEl.addEventListener("change", (e) => {
+      const checked = (e.target as HTMLInputElement).checked;
+      el("x1ProdContainer").hidden = checked;
+      el("kProdContainer").hidden = !checked;
+    });
+    // Initialize state
+    el("x1ProdContainer").hidden = useKEl.checked;
+    el("kProdContainer").hidden = !useKEl.checked;
+  }
 
   el<HTMLButtonElement>("toggleHistogram").addEventListener("click", () => {
     if (!currentViewState) return;
