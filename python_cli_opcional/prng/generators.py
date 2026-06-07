@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 import math
-from datetime import datetime
 
 
 def middle_square(seed: int, *, digits: int = 8) -> Iterator[float]:
@@ -10,12 +9,10 @@ def middle_square(seed: int, *, digits: int = 8) -> Iterator[float]:
     Cuadrados medios (Middle-square).
 
     - seed: entero no negativo.
-    - digits: cantidad TOTAL de dígitos (par) asociada al método; se interpreta como 2*d,
-      donde d es la cantidad de dígitos del estado R(n). Por ejemplo: digits=6 -> d=3.
+    - digits: cantidad de digitos del estado R(n).
 
-    Esta variante sigue el procedimiento típico de ejercicios: se eleva al cuadrado y se toma
-    el valor "central" quitando el primer y el último dígito del cuadrado (sin zfill).
-    Luego el próximo R(n) se forma con los primeros d dígitos de ese centro (con padding a la izquierda si hace falta).
+    Se eleva al cuadrado, se rellena a 2*digits con ceros a la izquierda y se toman
+    los digits centrales.
 
     Produce floats en [0, 1).
     """
@@ -24,28 +21,15 @@ def middle_square(seed: int, *, digits: int = 8) -> Iterator[float]:
     if digits <= 0:
         raise ValueError("digits must be > 0")
 
-    if digits % 2 != 0:
-        raise ValueError("digits must be even (e.g. 6 -> d=3)")
-
-    d = digits // 2
+    d = digits
     mod = 10**d
     x = seed % mod
-    
-    # Detect zero seed or zero square, regenerate from timestamp
-    if x == 0 or (x * x) == 0:
-        now = datetime.now()
-        ts_seed = (now.second * 1000 + now.microsecond // 1000) % 10000
-        x = (ts_seed % mod) or 1
-    elif "00" in str(seed):
-        x = (x * 12) % mod
 
     while True:
-        s = str(x * x)
-        center = s[1:-1] if len(s) > 2 else ""
-        if not center:
-            center = "0"
-        center = center.zfill(d)
-        x = int(center[:d])
+        s = str(x * x).zfill(2 * d)
+        start = (len(s) - d + 1) // 2
+        center = s[start : start + d]
+        x = int(center)
         yield x / mod
 
 
@@ -232,12 +216,9 @@ def middle_product(seed1: int, seed2: int, *, d: int = 4) -> Iterator[float]:
 
     while True:
         prod = x0 * x1
-        s = str(abs(prod))
-        if len(s) <= d:
-            center = s
-        else:
-            start = (len(s) - d) // 2
-            center = s[start : start + d]
+        s = str(abs(prod)).zfill(2 * d)
+        start = (len(s) - d) // 2
+        center = s[start : start + d]
         x2 = int(center)
         yield x2 / mod
         x0, x1 = x1, x2
