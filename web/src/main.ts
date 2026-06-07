@@ -226,9 +226,11 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
   }
 
   if (method === "multiplicative") {
-    const seed = toBigIntStrict(el<HTMLInputElement>("x0Lcg").value, "X0");
+    const seedEl = el<HTMLInputElement>("x0Lcg");
+    const aEl = el<HTMLInputElement>("aLcg");
+    let seed = toBigIntStrict(seedEl.value, "X0");
     if (seed === 0n) throw new Error("La semilla inicial X0 jamás puede ser cero.");
-    const a = toBigIntStrict(el<HTMLInputElement>("aLcg").value, "a");
+    let a = toBigIntStrict(aEl.value, "a");
     const m = toBigIntStrict(el<HTMLInputElement>("mLcgInput").value, "m");
     if (m <= 1n) throw new Error("El modulo m debe ser > 1");
     let seedEff = seed % m;
