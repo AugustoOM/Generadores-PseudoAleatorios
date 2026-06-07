@@ -270,52 +270,51 @@
 
               <div id="tab-t" class="tab-content" hidden>
                 <div id="t-test-container" hidden>
-                  <div class="tTableWrapper">
-                    <table class="table" aria-label="Resultados del Test t">
-                      <thead>
-                        <tr>
-                          <th>h</th>
-                          <th>&rho;</th>
-                          <th>t Calc.</th>
-                          <th>t Tabla</th>
-                          <th>Decisión (H0)</th>
-                        </tr>
-                      </thead>
-                      <tbody id="t-test-tbody"></tbody>
-                    </table>
-                  </div>
-                  <div id="t-detail" class="chiDetail tDetail" hidden>
-                    <h4>Calculo detallado del test t de independencia</h4>
-                    <p class="chiMsg">La prueba compara valores separados por un retardo h. Si existe relacion entre u<sub>i</sub> y u<sub>i+h</sub>, el generador puede no ser independiente.</p>
-                    <div class="chiDetailGrid">
-                      <span>Retardo analizado: <strong id="t-detail-h">h = 1</strong></span>
-                      <span>Pares comparados: <strong id="t-detail-pairs">-</strong></span>
-                      <span>Suma de productos: <strong id="t-detail-sum">-</strong></span>
-                      <span>Promedio de productos: <strong id="t-detail-avg">-</strong></span>
-                      <span>Coeficiente &rho;: <strong id="t-detail-rho">-</strong></span>
-                      <span>Grados de libertad: <strong id="t-detail-df">-</strong></span>
-                      <span>Valor t calculado: <strong id="t-detail-tcalc">-</strong></span>
-                      <span>Valor t tabla: <strong id="t-detail-ttable">-</strong></span>
+                    <div class="chiStats" style="margin-bottom:1rem;">
+                      <div class="chiStat">
+                        <span>Media (&mu;) Muestral</span>
+                        <strong id="t-test-mean">-</strong>
+                      </div>
+                      <div class="chiStat">
+                        <span>Desviación Estándar (S)</span>
+                        <strong id="t-test-std">-</strong>
+                      </div>
+                      <div class="chiStat">
+                        <span>t Tabla (&alpha;=0.05, &nu;=<span id="t-test-df">-</span>)</span>
+                        <strong id="t-test-tcrit">-</strong>
+                      </div>
+                      <div class="chiStat">
+                        <span>Margen de Error</span>
+                        <strong id="t-test-error">-</strong>
+                      </div>
                     </div>
-                    <p class="formula">&rho; = (((&Sigma; u<sub>i</sub>u<sub>i+h</sub>) / pares) - 0.25) / (1 / 12)</p>
-                    <p class="formula">t = &rho; * &radic;(gl) / &radic;(1 - &rho;<sup>2</sup>)</p>
-                    <p class="chiMsg">gl = pares - 2. Si |t calculado| es menor que t tabla, no se rechaza H0 y no hay evidencia de dependencia. Si es mayor o igual, se rechaza H0.</p>
-                    <div class="detailTableWrap">
-                      <table class="table" aria-label="Calculo detallado del Test t de independencia">
-                        <thead>
-                          <tr>
-                            <th>i</th>
-                            <th>u<sub>i</sub></th>
-                            <th>u<sub>i+h</sub></th>
-                            <th>Producto</th>
-                          </tr>
-                        </thead>
-                        <tbody id="t-detail-tbody"></tbody>
-                      </table>
+
+                    <div class="chiTop" style="margin-top:1.5rem;">
+                      <h4>Intervalo de Confianza para &mu;</h4>
+                      <span id="t-test-status" class="tag">?</span>
                     </div>
-                    <p class="chiMsg" id="t-detail-table-note">-</p>
-                    <p class="chiMsg" id="t-detail-decision">-</p>
-                  </div>
+                    <div class="chiStats">
+                      <div class="chiStat">
+                        <span>Límite Inferior (LI)</span>
+                        <strong id="t-test-li">-</strong>
+                      </div>
+                      <div class="chiStat">
+                        <span>Límite Superior (LS)</span>
+                        <strong id="t-test-ls">-</strong>
+                      </div>
+                    </div>
+                    <p id="t-test-msg" class="chiMsg"></p>
+
+                    <div id="t-detail" class="chiDetail tDetail" hidden>
+                      <h4>Calculo detallado</h4>
+                      <div class="chiDetailGrid">
+                        <span>Tamaño de Muestra: <strong id="t-detail-n">-</strong></span>
+                        <span>Grados de Libertad: <strong id="t-detail-df">-</strong></span>
+                        <span>Promedio Esperado: <strong>0.5</strong></span>
+                      </div>
+                      <p class="formula">IC = X&#772; &plusmn; t<sub>(&alpha;/2, &nu;)</sub> &middot; S / &radic;n</p>
+                      <p class="chiMsg">Se verifica si la media teórica esperada bajo uniformidad (&mu; = 0.5) se encuentra dentro del intervalo de confianza calculado. Si es así, no se rechaza la hipótesis de uniformidad (Acepta H0).</p>
+                    </div>               </div>
                   <div class="scatterWrapper">
                     <h4>Gráfico de Dispersión (h=1)</h4>
                     <canvas id="scatter-plot" width="400" height="400"></canvas>

@@ -161,8 +161,8 @@ function getUValues(rows: PRNGOutput[]): number[] {
 function buildGenerator(method: Method): Generator<PRNGOutput> {
   if (method === "middle-square") {
     const seedInput = el<HTMLInputElement>("seed").value.trim();
-    if (seedInput.length !== 6) {
-      throw new Error("La semilla debe tener exactamente 6 dígitos para el método de cuadrados medios.");
+    if (seedInput.length < 4 || seedInput.length % 2 !== 0) {
+      throw new Error("La semilla debe tener una longitud par (n ≥ 4) para el método de cuadrados medios.");
     }
     const seed = toBigIntStrict(seedInput, "seed");
     const digits = seedInput.length;
@@ -180,6 +180,12 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
   if (method === "middle-product") {
     const x0Raw = el<HTMLInputElement>("x0Prod").value.trim();
     const x1Raw = el<HTMLInputElement>("x1Prod").value.trim();
+    if (x0Raw.length !== x1Raw.length) {
+      throw new Error("X0 y X1 deben tener idéntica longitud de dígitos (n).");
+    }
+    if (x0Raw.endsWith("0") || x1Raw.endsWith("0")) {
+      throw new Error("Ninguna semilla puede finalizar en cero (estado absorbente destructivo).");
+    }
     const x0 = toBigIntStrict(x0Raw, "X0");
     const x1 = toBigIntStrict(x1Raw, "X1");
     const d = x0Raw.length;
@@ -188,6 +194,7 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
 
   if (method === "multiplicative") {
     const seed = toBigIntStrict(el<HTMLInputElement>("x0Lcg").value, "X0");
+    if (seed === 0n) throw new Error("La semilla inicial X0 jamás puede ser cero.");
     const a = toBigIntStrict(el<HTMLInputElement>("aLcg").value, "a");
     const m = toBigIntStrict(el<HTMLInputElement>("mLcgInput").value, "m");
     return multiplicativeLCG(seed, a, m);
@@ -197,6 +204,11 @@ function buildGenerator(method: Method): Generator<PRNGOutput> {
   const a = toBigIntStrict(el<HTMLInputElement>("aMixed").value, "a");
   const c = toBigIntStrict(el<HTMLInputElement>("cMixed").value, "c");
   const m = toBigIntStrict(el<HTMLInputElement>("mMixed").value, "m");
+  
+  const maxParam = seed > a ? (seed > c ? seed : c) : (a > c ? a : c);
+  if (m <= maxParam) {
+    throw new Error(`El módulo m (${m}) debe ser estrictamente mayor que max(X0, a, c) = ${maxParam}.`);
+  }
   return mixedLCG(seed, a, c, m);
 }
 
@@ -219,7 +231,7 @@ function updateMethodVisibility(method: Method) {
 }
 
 // Genera y rellena dinámicamente las filas de la tabla de resultados en el HTML de la UI
-function renderTable(rows: any[], method: Method) {
+function renderTable(rows: any[], fullRows: any[], method: Method) {
   const tbody = el<HTMLTableSectionElement>("tbody");
   tbody.innerHTML = "";
 
@@ -238,7 +250,7 @@ function renderTable(rows: any[], method: Method) {
   }
 
   const sourceOfRepeat = new Set<number>();
-  for (const r of rows) {
+  for (const r of fullRows) {
     if (r?.repeatOf !== undefined) {
       sourceOfRepeat.add(r.repeatOf);
     }
@@ -280,6 +292,9 @@ function renderTable(rows: any[], method: Method) {
     if (method === "middle-product") {
       tdAux.style.fontSize = "0.85em";
       tdAux.innerHTML = `P: ${r.productA} | ${r.productB}<br>C: ${r.centerA} | ${r.centerB}`;
+      if (r.aux !== "-") {
+        tdAux.innerHTML += `<br><span class="badge badge-yellow">${r.aux}</span>`;
+      }
     } else {
       tdAux.textContent = r.aux ?? "-";
     }
@@ -368,10 +383,15 @@ function renderHistogram(rows: PRNGOutput[], mode: HistogramMode) {
   status.style.background = passed ? "var(--green)" : "var(--red)";
 
   const msg = el("chi-msg");
-  msg.textContent = passed
+  let msgText = passed
     ? "La distribución parece uniforme (no se rechaza H0)."
     : "La distribución no es uniforme (se rechaza H0).";
-  msg.style.color = passed ? "var(--green)" : "var(--red)";
+  
+  if (n < 50) {
+    msgText += " ⚠ Advertencia: Muestra insuficiente. Se requieren N ≥ 50 para que la frecuencia esperada (E) sea ≥ 5 en 10 intervalos.";
+  }
+  msg.textContent = msgText;
+  msg.style.color = passed ? (n >= 50 ? "var(--green)" : "var(--yellow)") : "var(--red)";
 
   renderChiSquareDetail(counts, expected, chi2, critical);
 }
@@ -418,31 +438,26 @@ function renderChiSquareDetail(counts: number[], expected: number, chi2: number,
   });
 }
 
-type TTestResult = {
-  h: number;
-  pairs: number;
-  sum: number;
-  averageProduct: number;
-  rho: number;
-  df: number;
-  tCalc: number;
-  tTabla: number;
-  passed: boolean;
-};
-
-// Ejecuta la Prueba t-Student de Autocorrelación para lags 1, 2 y 3 evaluando la independencia estadística
+// Ejecuta la Prueba t-Student de Intervalo de Confianza para la media
 function renderTTest(rows: PRNGOutput[]) {
   const container = el<HTMLDivElement>("t-test-container");
   const meta = el<HTMLParagraphElement>("t-test-meta");
-  const tbody = el<HTMLTableSectionElement>("t-test-tbody");
   const detail = el<HTMLDivElement>("t-detail");
-  tbody.innerHTML = "";
 
   const uValues = getUValues(rows);
-
   const n = uValues.length;
-  if (n <= 3) {
+
+  if (n < 2) {
     container.hidden = true;
+    meta.textContent = "Datos insuficientes. Se requiere n ≥ 2.";
+    meta.hidden = false;
+    detail.hidden = true;
+    return;
+  }
+
+  if (n >= 30) {
+    container.hidden = true;
+    meta.textContent = `La prueba t-Student aplica rigurosamente para muestras pequeñas (n < 30). Actualmente n=${n}. Utiliza 10 o 20 iteraciones para evaluar la prueba t.`;
     meta.hidden = false;
     detail.hidden = true;
     return;
@@ -450,129 +465,58 @@ function renderTTest(rows: PRNGOutput[]) {
 
   container.hidden = false;
   meta.hidden = true;
+  detail.hidden = false;
 
-  const lags = [1, 2, 3];
-  const results: TTestResult[] = [];
+  // 1. Calcular Media
+  let sum = 0;
+  for (const u of uValues) sum += u;
+  const mean = sum / n;
 
-  for (const h of lags) {
-    if (n - h <= 0) continue;
-
-    let sum = 0;
-    for (let i = 0; i < n - h; i++) {
-      sum += uValues[i] * uValues[i + h];
-    }
-
-    const pairs = n - h;
-    const averageProduct = sum / pairs;
-    const rho = (averageProduct - 0.25) / (1 / 12);
-
-    const df = pairs - 2;
-    if (df <= 0) continue;
-
-    const denominator = Math.sqrt(Math.max(0, 1 - rho * rho));
-    let tCalc = 0;
-    if (denominator > 0) {
-      tCalc = (rho * Math.sqrt(df)) / denominator;
-    } else {
-      tCalc = Infinity;
-    }
-
-    const tTabla = getTTableValue(df);
-    const passed = Math.abs(tCalc) < tTabla;
-    results.push({ h, pairs, sum, averageProduct, rho, df, tCalc, tTabla, passed });
-
-    const tr = document.createElement("tr");
-
-    const tdH = document.createElement("td");
-    tdH.className = "num";
-    tdH.textContent = String(h);
-
-    const tdRho = document.createElement("td");
-    tdRho.className = "num";
-    tdRho.textContent = rho.toFixed(4);
-
-    const tdTCalc = document.createElement("td");
-    tdTCalc.className = "num";
-    tdTCalc.textContent = tCalc === Infinity ? "Inf" : Math.abs(tCalc).toFixed(4);
-
-    const tdTTabla = document.createElement("td");
-    tdTTabla.className = "num";
-    tdTTabla.textContent = tTabla.toFixed(4);
-
-    const tdDec = document.createElement("td");
-    if (passed) {
-      tdDec.innerHTML = `<span class="tag" style="background:var(--green);margin:0;">Acepta H0</span>`;
-    } else {
-      tdDec.innerHTML = `<span class="tag" style="background:var(--red);margin:0;">Rechaza H0</span>`;
-    }
-
-    tr.append(tdH, tdRho, tdTCalc, tdTTabla, tdDec);
-    tbody.append(tr);
+  // 2. Calcular Desviación Estándar Muestral (S)
+  let sumSq = 0;
+  for (const u of uValues) {
+    sumSq += Math.pow(u - mean, 2);
   }
+  const variance = sumSq / (n - 1);
+  const std = Math.sqrt(variance);
 
-  if (results.length > 0) {
-    renderTTestDetail(uValues, results[0]);
-  } else {
-    detail.hidden = true;
-  }
+  // 3. Grados de libertad y t Tabla
+  const df = n - 1;
+  const tTabla = getTTableValue(df); // Usa la tabla existente con alfa=0.05
+
+  // 4. Margen de error y Límites
+  const error = tTabla * (std / Math.sqrt(n));
+  const li = mean - error;
+  const ls = mean + error;
+
+  // 5. Decisión (H0: mu = 0.5)
+  const mu = 0.5;
+  const passed = mu >= li && mu <= ls;
+
+  // 6. Actualizar UI
+  el("t-test-mean").textContent = mean.toFixed(4);
+  el("t-test-std").textContent = std.toFixed(4);
+  el("t-test-df").textContent = String(df);
+  el("t-test-tcrit").textContent = tTabla.toFixed(3);
+  el("t-test-error").textContent = error.toFixed(4);
+
+  const status = el("t-test-status");
+  status.textContent = passed ? "CUMPLE" : "NO CUMPLE";
+  status.style.background = passed ? "var(--green)" : "var(--red)";
+
+  el("t-test-li").textContent = li.toFixed(4);
+  el("t-test-ls").textContent = ls.toFixed(4);
+
+  const msg = el("t-test-msg");
+  msg.textContent = passed
+    ? `El valor esperado μ = 0.5 se encuentra dentro del intervalo [${li.toFixed(4)}, ${ls.toFixed(4)}]. No se rechaza H0.`
+    : `El valor esperado μ = 0.5 NO se encuentra dentro del intervalo [${li.toFixed(4)}, ${ls.toFixed(4)}]. Se rechaza H0.`;
+  msg.style.color = passed ? "var(--green)" : "var(--red)";
+
+  el("t-detail-n").textContent = String(n);
+  el("t-detail-df").textContent = String(df);
 
   renderScatterPlot(rows);
-}
-
-function formatTValue(value: number): string {
-  if (!Number.isFinite(value)) return "Inf";
-  return Math.abs(value).toFixed(4);
-}
-
-function renderTTestDetail(uValues: number[], result: TTestResult) {
-  el<HTMLDivElement>("t-detail").hidden = false;
-  el("t-detail-h").textContent = `h = ${result.h}`;
-  el("t-detail-pairs").textContent = String(result.pairs);
-  el("t-detail-sum").textContent = result.sum.toFixed(4);
-  el("t-detail-avg").textContent = `${result.sum.toFixed(4)} / ${result.pairs} = ${result.averageProduct.toFixed(4)}`;
-  el("t-detail-rho").textContent = `(${result.averageProduct.toFixed(4)} - 0.25) / (1 / 12) = ${result.rho.toFixed(4)}`;
-  el("t-detail-df").textContent = `${result.pairs} - 2 = ${result.df}`;
-  el("t-detail-tcalc").textContent = formatTValue(result.tCalc);
-  el("t-detail-ttable").textContent = result.tTabla.toFixed(4);
-
-  const decision = result.passed
-    ? `Decision: como |t calculado| es menor que t tabla, se acepta H0. No hay evidencia de dependencia para h = ${result.h}.`
-    : `Decision: como |t calculado| es mayor o igual que t tabla, se rechaza H0. Puede existir dependencia para h = ${result.h}.`;
-  el("t-detail-decision").textContent = decision;
-
-  const tbody = el<HTMLTableSectionElement>("t-detail-tbody");
-  tbody.innerHTML = "";
-
-  const visiblePairs = Math.min(result.pairs, 20);
-  el("t-detail-table-note").textContent = visiblePairs === result.pairs
-    ? `Se muestran los ${result.pairs} pares usados en el calculo.`
-    : `Se muestran los primeros ${visiblePairs} pares de ${result.pairs}; la suma y el calculo usan todos los pares.`;
-
-  for (let i = 0; i < visiblePairs; i++) {
-    const ui = uValues[i];
-    const uLag = uValues[i + result.h];
-    const product = ui * uLag;
-    const tr = document.createElement("tr");
-
-    const tdI = document.createElement("td");
-    tdI.className = "num";
-    tdI.textContent = String(i + 1);
-
-    const tdUi = document.createElement("td");
-    tdUi.className = "num";
-    tdUi.textContent = formatU(ui);
-
-    const tdULag = document.createElement("td");
-    tdULag.className = "num";
-    tdULag.textContent = formatU(uLag);
-
-    const tdProduct = document.createElement("td");
-    tdProduct.className = "num";
-    tdProduct.textContent = product.toFixed(4);
-
-    tr.append(tdI, tdUi, tdULag, tdProduct);
-    tbody.append(tr);
-  }
 }
 
 // Dibuja el diagrama de dispersión de desfases (Scatter Plot) en un elemento Canvas (u_i vs u_{i+1})
@@ -613,13 +557,13 @@ function renderScatterPlot(rows: PRNGOutput[]) {
   }
 }
 
-// Actualiza y sincroniza todos los componentes de la interfaz (tabla, histograma, dispersión) según el estado actual
+// Despacha los datos al DOM basándose en el estado global
 function updateView() {
   if (!currentViewState) return;
-
-  const { requestedRows, fullRows, expanded, requestedN, histogramMode, method } = currentViewState;
-  const visibleRows = expanded ? requestedRows : requestedRows.slice(0, INITIAL_TABLE_LIMIT);
-  renderTable(visibleRows, method);
+  const { requestedRows, fullRows, expanded, histogramMode, requestedN, effectiveN, method } = currentViewState;
+  
+  const displayRows = expanded ? fullRows : requestedRows.slice(0, INITIAL_TABLE_LIMIT);
+  renderTable(displayRows, fullRows, method);
   renderStats(requestedRows);
 
   const toggleTableBtn = el<HTMLButtonElement>("toggleTable");
@@ -659,7 +603,7 @@ function renderStats(rows: PRNGOutput[]) {
 // Restablece el estado de los resultados y limpia las vistas del frontend
 function clearResults() {
   currentViewState = null;
-  renderTable([], "multiplicative");
+  renderTable([], [], "multiplicative");
   renderStats([]);
   renderHistogram([], "requested");
   renderTTest([]);
@@ -814,6 +758,20 @@ function generate() {
       const status = el("hd-status");
       status.textContent = full ? "Cumple Hull-Dobell (Periodo Completo)" : "No cumple (Periodo Incompleto)";
       status.className = full ? "status-ok" : "status-fail";
+    } else if (method === "multiplicative") {
+      el("hull-dobell").hidden = true;
+      // Comprobar potencia de 2
+      if ((m & (m - 1n)) === 0n && m > 1n) {
+        const seed = toBigIntStrict(el<HTMLInputElement>("x0Lcg").value, "X0");
+        const a = toBigIntStrict(el<HTMLInputElement>("aLcg").value, "a");
+        const isOddSeed = seed % 2n !== 0n;
+        const validA = a % 8n === 3n || a % 8n === 5n;
+        if (isOddSeed && validA) {
+          setWarning("✓ Parámetros óptimos para m=2^b: X0 impar y a ≡ 3 o 5 (mod 8).");
+        } else {
+          setWarning("⚠ Para módulo m=2^b, se recomienda semilla X0 impar y multiplicador a ≡ 3 o 5 (mod 8) para maximizar el período.");
+        }
+      }
     } else {
       el("hull-dobell").hidden = true;
     }

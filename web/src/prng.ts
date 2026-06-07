@@ -66,6 +66,12 @@ export function* middleSquare(seed: bigint, d: number): Generator<PRNGOutput> {
 
     x = BigInt(center);
     const u = Number(x) / Number(mod);
+    
+    if (x === 0n) {
+      yield { u, x, aux: `${left} | [${center}] | ${right} (${square}) - ¡DEGENERADO!` };
+      break; // Abortar la secuencia para evitar bucle infinito en 0
+    }
+    
     yield { u, x, aux: `${left} | [${center}] | ${right} (${square})` };
   }
 }
@@ -112,6 +118,17 @@ export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generat
       v2 = BigInt(c2);
     }
 
+    let auxMessage = "-";
+    if (v1 === 0n) {
+      // Estado absorbente detectado. Activar constante K para resembrar.
+      const K = 73n; // Constante elegida empíricamente para evitar colapso
+      v1 = (prev === 0n ? K : prev) * K;
+      const v1Str = v1.toString();
+      v1 = BigInt(v1Str.slice(-Math.min(v1Str.length, d)));
+      if (v1 === 0n) v1 = K;
+      auxMessage = "¡Resembrado dinámico! (K=73)";
+    }
+
     yield {
       productA: s,
       productB: "-",
@@ -125,6 +142,7 @@ export function* middleProduct(seed1: bigint, seed2: bigint, d: number): Generat
       u2: Number(v2) / Number(mod),
       x: v1, // Seguimos la secuencia por Val 1
       u: Number(v1) / Number(mod),
+      aux: auxMessage,
       d: d,
       stateKey: `${prev},${curr}`,
       isBifurcated: diff % 2 !== 0
