@@ -185,11 +185,12 @@ export function* laggedFibonacci(
   if (k <= j) throw new Error("k must be > j");
   if (m <= 1n) throw new Error("m must be > 1");
 
+  if (seed1 >= m || seed1 < 0n) throw new Error(`Semilla 1 (${seed1}) debe ser mayor o igual a 0 y estrictamente menor que el módulo m (${m})`);
+  if (seed2 >= m || seed2 < 0n) throw new Error(`Semilla 2 (${seed2}) debe ser mayor o igual a 0 y estrictamente menor que el módulo m (${m})`);
+
   const buf: bigint[] = [];
-  let x0 = seed1 % m;
-  let x1 = seed2 % m;
-  if (x0 < 0n) x0 += m;
-  if (x1 < 0n) x1 += m;
+  let x0 = seed1;
+  let x1 = seed2;
   buf.push(x0);
   if (k > 1) buf.push(x1);
   for (let i = 2; i < k; i += 1) buf.push((buf[i - 1] + buf[i - 2]) % m);
@@ -227,8 +228,8 @@ export function* multiplicativeLCG(seed: bigint, a: bigint, m: bigint): Generato
   if (aEff < 0n) aEff += m;
   if (aEff === 0n) throw new Error("El multiplicador a no puede ser múltiplo del módulo m");
 
-  let x = seed % m;
-  if (x < 0n) x += m;
+  if (seed >= m || seed < 0n) throw new Error(`La semilla X0 (${seed}) debe ser mayor o igual a 0 y estrictamente menor que el módulo m (${m})`);
+  let x = seed;
   if (x === 0n) {
     x = 1n;
     yield { u: Number(x) / Number(m), x, aux: "Semilla 0 reemplazada por 1 para evitar degeneracion inmediata" };
@@ -259,8 +260,8 @@ export function* mixedLCG(seed: bigint, a: bigint, c: bigint, m: bigint): Genera
   let inc = c % m;
   if (inc < 0n) inc += m;
 
-  let x = seed % m;
-  if (x < 0n) x += m;
+  if (seed >= m || seed < 0n) throw new Error(`La semilla X0 (${seed}) debe ser mayor o igual a 0 y estrictamente menor que el módulo m (${m})`);
+  let x = seed;
 
   // Devolver el estado inicial X0 primero
   yield { u: Number(x) / Number(m), x, aux: "Semilla" };

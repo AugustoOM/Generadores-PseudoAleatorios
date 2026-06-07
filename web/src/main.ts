@@ -728,9 +728,15 @@ function analyzeDegeneration(rows: PRNGOutput[], method: Method, period: number 
   if (firstRepeatIndex >= 0) {
     const repeatOf = rows[firstRepeatIndex].repeatOf ?? 0;
     const detectedPeriod = period ?? firstRepeatIndex - repeatOf;
-    addGenerationWarning(
-      `La generacion empieza a degenerarse en la fila ${firstRepeatIndex}: repite el estado de la fila ${repeatOf} y entra en ciclo de periodo ${detectedPeriod}.`
-    );
+    if (detectedPeriod === 1) {
+      addGenerationWarning(
+        `La generacion colapsa (degenera) en la fila ${firstRepeatIndex}: entra en un estado absorbente constante.`
+      );
+    } else {
+      addGenerationWarning(
+        `El generador completó su ciclo en la fila ${firstRepeatIndex}: repite exactamente el estado de la fila ${repeatOf} y entra en un bucle de periodo ${detectedPeriod}.`
+      );
+    }
   }
 
   const firstZeroIndex = rows.findIndex(row => row.x === 0n || row.u === 0 || row.u1 === 0 || row.u2 === 0);
@@ -821,6 +827,8 @@ function generate() {
     
     if (seen.has(key) && val.repeatOf === undefined) {
       val.repeatOf = seen.get(key);
+      fullRows.push(val);
+      break;
     } else if (!seen.has(key)) {
       if (val.stateKey !== undefined || (method !== "fibonacci" && method !== "middle-product")) {
         seen.set(key, i);
