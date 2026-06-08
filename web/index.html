@@ -8,7 +8,9 @@
   <body>
     <div class="desk">
       <aside class="rail" aria-label="Identificacion del banco">
-        <span>Gen-Pseudo</span>
+        <button id="rail-chat-toggle" class="railChatToggle" type="button" aria-label="Abrir chat con Gemini">
+          Gen-Pseudo
+        </button>
         <strong>005</strong>
         <small>SIM-LAB</small>
       </aside>
@@ -341,6 +343,29 @@
         </footer>
       </div>
     </div>
+
+    <section id="ai-chat-panel" class="aiChatPanel" aria-label="Chat con Gemini" hidden>
+      <header class="aiChatHeader">
+        <div>
+          <span>Gemini</span>
+          <strong>Asistente IA</strong>
+        </div>
+        <button id="ai-chat-close" class="aiChatClose" type="button" aria-label="Cerrar chat">X</button>
+      </header>
+
+      <div id="ai-chat-messages" class="aiChatMessages" aria-live="polite">
+        <div class="aiChatBubble aiChatBubbleModel">
+          Hola. Puedo ayudarte a interpretar resultados, revisar parametros o explicar los metodos.
+        </div>
+      </div>
+
+      <form id="ai-chat-form" class="aiChatForm">
+        <textarea id="ai-chat-input" rows="2" placeholder="Escribe tu pregunta..."></textarea>
+        <button id="ai-chat-send" class="run" type="submit">Enviar</button>
+      </form>
+
+      <p id="ai-chat-status" class="aiChatStatus"></p>
+    </section>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

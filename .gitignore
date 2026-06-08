@@ -8,3 +8,6 @@ dist/
 __pycache__/
 *.pyc
 *.tsbuildinfo
+.env
+web/.env
+web/.env/

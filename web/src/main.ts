@@ -10,6 +10,11 @@ import {
 } from "./prng";
 
 type Method = "middle-square" | "fibonacci" | "multiplicative" | "mixed" | "middle-product";
+type GeminiRole = "user" | "model";
+type GeminiMessage = {
+  role: GeminiRole;
+  parts: { text: string }[];
+};
 
 const methodDetails: Record<Method, { name: string; description: string }> = {
   "middle-square": {
@@ -39,6 +44,7 @@ const TOTAL_INTERNAL_GENERATIONS = 1000; // Total de iteraciones internas para p
 const INITIAL_TABLE_LIMIT = 20; // Límite inicial de filas visibles en la tabla
 const HISTOGRAM_BINS = 10; // Cantidad de intervalos para el histograma
 const MAX_PERIOD_OUTPUT = 10000; // Límite máximo para evitar bloqueos por periodos largos
+const GEMINI_CHAT_MODEL = "gemini-2.5-flash-lite";
 
 type HistogramMode = "requested" | "full";
 
@@ -754,6 +760,140 @@ function getCurrentMethod(): Method {
   return el<HTMLSelectElement>("method").value as Method;
 }
 
+function appendChatBubble(role: GeminiRole, text: string) {
+  const host = el<HTMLDivElement>("ai-chat-messages");
+  const bubble = document.createElement("div");
+  bubble.className = role === "user"
+    ? "aiChatBubble aiChatBubbleUser"
+    : "aiChatBubble aiChatBubbleModel";
+  bubble.textContent = text;
+  host.append(bubble);
+  host.scrollTop = host.scrollHeight;
+}
+
+function setChatStatus(message: string, isError = false) {
+  const status = el<HTMLParagraphElement>("ai-chat-status");
+  status.textContent = message;
+  status.classList.toggle("errorText", isError);
+}
+
+function getGeneratorContext(): string {
+  if (!currentViewState) {
+    return "Aun no hay una generacion activa en la tabla.";
+  }
+
+  const { method, requestedRows, fullRows, effectiveN } = currentViewState;
+  const values = getUValues(requestedRows).slice(0, 20).map(formatU).join(", ");
+  const firstRepeat = fullRows.find(row => row.repeatOf !== undefined);
+  const period = firstRepeat?.repeatOf === undefined
+    ? "no detectado"
+    : String(fullRows.indexOf(firstRepeat) - firstRepeat.repeatOf);
+
+  return [
+    `Metodo activo: ${methodDetails[method].name}.`,
+    `Valores visibles generados: ${effectiveN}.`,
+    `Periodo detectado: ${period}.`,
+    `Primeros U: ${values || "sin datos"}.`,
+  ].join("\n");
+}
+
+async function askGemini(history: GeminiMessage[], apiKey: string, model: string): Promise<string> {
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
+    body: JSON.stringify({
+      systemInstruction: {
+        parts: [{
+          text: [
+            "Eres un asistente educativo dentro de una app de generadores pseudoaleatorios.",
+            "Responde en espanol, con explicaciones breves y practicas.",
+            "Ayuda a interpretar semillas, periodos, ciclos, chi-cuadrado y pruebas t.",
+            getGeneratorContext(),
+          ].join("\n"),
+        }],
+      },
+      contents: history,
+    }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    const message = data?.error?.message ?? `Error HTTP ${response.status}`;
+    throw new Error(message);
+  }
+
+  const text = data?.candidates?.[0]?.content?.parts
+    ?.map((part: { text?: string }) => part.text ?? "")
+    .join("")
+    .trim();
+
+  if (!text) {
+    throw new Error("Gemini no devolvio texto para esta consulta.");
+  }
+
+  return text;
+}
+
+function wireAIChat() {
+  const toggle = el<HTMLButtonElement>("rail-chat-toggle");
+  const panel = el<HTMLElement>("ai-chat-panel");
+  const close = el<HTMLButtonElement>("ai-chat-close");
+  const form = el<HTMLFormElement>("ai-chat-form");
+  const input = el<HTMLTextAreaElement>("ai-chat-input");
+  const send = el<HTMLButtonElement>("ai-chat-send");
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY?.trim() ?? "";
+  const chatHistory: GeminiMessage[] = [];
+
+  const openChat = () => {
+    panel.hidden = false;
+    input.focus();
+  };
+
+  const closeChat = () => {
+    panel.hidden = true;
+  };
+
+  toggle.addEventListener("click", () => {
+    if (panel.hidden) openChat();
+    else closeChat();
+  });
+  close.addEventListener("click", closeChat);
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const prompt = input.value.trim();
+
+    if (!prompt) return;
+    if (!apiKey) {
+      setChatStatus("Falta VITE_GEMINI_API_KEY en web/.env. Reinicia Vite despues de agregarla.", true);
+      return;
+    }
+
+    input.value = "";
+    appendChatBubble("user", prompt);
+    chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+
+    send.disabled = true;
+    setChatStatus("Consultando Gemini...");
+
+    try {
+      const answer = await askGemini(chatHistory, apiKey, GEMINI_CHAT_MODEL);
+      appendChatBubble("model", answer);
+      chatHistory.push({ role: "model", parts: [{ text: answer }] });
+      setChatStatus("Listo");
+    } catch (error) {
+      setChatStatus(error instanceof Error ? error.message : String(error), true);
+    } finally {
+      send.disabled = false;
+      input.focus();
+    }
+  });
+}
+
 // Controlador maestro que lee parámetros del DOM, invoca el PRNG y guarda el estado para el renderizado
 function generate() {
   setError(null);
@@ -890,6 +1030,7 @@ function generate() {
 
 // Inicializa las pestañas, controladores del DOM y eventos de interacción del usuario en la UI
 function wire() {
+  wireAIChat();
   const method = el<HTMLSelectElement>("method");
   method.addEventListener("change", () => {
     updateMethodVisibility(getCurrentMethod());
